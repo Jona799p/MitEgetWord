@@ -305,12 +305,38 @@ const UpdateNotification = () => {
             {typeof window !== 'undefined' && window.require && status !== 'downloading' ? (
               <button 
                 className="update-action-btn primary"
-                onClick={() => {
+                onClick={async () => {
                   setStatus('downloading');
+                  setProgress(5);
                   try {
                     const { ipcRenderer } = window.require('electron');
+                    const serverUrl = getServerUrl().replace(/\/+$/, '');
+                    
+                    // 1. Sørg for at autoUpdater altid peger på Server Central
+                    await ipcRenderer.invoke('set-update-url', serverUrl);
+                    
+                    // 2. Forsøg direkte download af installationsfilen fra Server Central
+                    const targetFile = downloadFileName || `MitEgetWord Setup ${newVersion}.exe`;
+                    const directUrl = `${serverUrl}/updates/${targetFile}`;
+
+                    try {
+                      const res = await ipcRenderer.invoke('download-update-direct', {
+                        url: directUrl,
+                        fileName: targetFile,
+                        version: newVersion
+                      });
+                      if (res && res.success) {
+                        return;
+                      }
+                    } catch (dErr) {
+                      console.warn('Direkte download fejlede, prøver autoUpdater.checkForUpdates:', dErr);
+                    }
+
+                    // Fallback til standard autoUpdater
                     ipcRenderer.invoke('check-for-updates');
-                  } catch {}
+                  } catch (err) {
+                    console.error('Fejl ved opdateringskald:', err);
+                  }
                 }}
               >
                 <Download size={14} />
@@ -319,16 +345,25 @@ const UpdateNotification = () => {
             ) : null}
 
             {downloadFileName && (
-              <a 
-                href={`${getServerUrl().replace(/\/+$/, '')}/updates/${downloadFileName}`}
-                target="_blank"
-                rel="noreferrer"
+              <button 
+                onClick={() => {
+                  const serverUrl = getServerUrl().replace(/\/+$/, '');
+                  const fileUrl = `${serverUrl}/updates/${downloadFileName}`;
+                  if (typeof window !== 'undefined' && window.require) {
+                    try {
+                      const { ipcRenderer } = window.require('electron');
+                      ipcRenderer.invoke('open-external-url', fileUrl);
+                      return;
+                    } catch {}
+                  }
+                  window.open(fileUrl, '_blank');
+                }}
                 className="update-action-btn link"
-                title="Download installationsfilen direkte fra serveren"
+                title="Download installationsfilen direkte i browseren"
               >
                 <Download size={13} />
                 <span>Download .exe ({newVersion})</span>
-              </a>
+              </button>
             )}
 
             <button 

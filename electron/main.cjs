@@ -13,17 +13,18 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 function setupAutoUpdaterFeed() {
+  const defaultServerFeed = 'http://100.126.133.31:3000/updates';
   try {
     const configPath = path.join(app.getPath('userData'), 'server-config.json');
     if (fs.existsSync(configPath)) {
       const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (cfg.useServerUpdates && cfg.serverUrl && typeof cfg.serverUrl === 'string') {
+      if (cfg.serverUrl && typeof cfg.serverUrl === 'string') {
         const customUrl = `${cfg.serverUrl.trim().replace(/\/+$/, '')}/updates`;
         autoUpdater.setFeedURL({
           provider: 'generic',
           url: customUrl
         });
-        console.log(`[AutoUpdater] Bruger konfigureret lokal server feed: ${customUrl}`);
+        console.log(`[AutoUpdater] Bruger konfigureret server feed: ${customUrl}`);
         return;
       }
     }
@@ -31,16 +32,15 @@ function setupAutoUpdaterFeed() {
     console.warn('[AutoUpdater] Kunne ikke indlæse server-config:', err.message);
   }
 
-  // Standard: Officielle opdateringer via GitHub Releases (kræver ingen server eller tailscale)
+  // Standard: Brug altid Server Central Hub som standard feed
   try {
     autoUpdater.setFeedURL({
-      provider: 'github',
-      owner: 'Jona799p',
-      repo: 'MitEgetWord'
+      provider: 'generic',
+      url: defaultServerFeed
     });
-    console.log('[AutoUpdater] Konfigureret til GitHub Releases (Jona799p/MitEgetWord)');
+    console.log(`[AutoUpdater] Konfigureret til Server Central (${defaultServerFeed})`);
   } catch (err) {
-    console.warn('[AutoUpdater] Fejl ved opsætning af GitHub feed:', err.message);
+    console.warn('[AutoUpdater] Fejl ved opsætning af standard feed:', err.message);
   }
 }
 
@@ -383,6 +383,84 @@ ipcMain.handle('set-update-url', (event, serverUrl) => {
   }
 });
 
+let downloadedInstallerPath = null;
+
+ipcMain.handle('download-update-direct', async (event, { url, fileName, version }) => {
+  try {
+    const targetFileName = fileName || `MitEgetWord Setup ${version || 'latest'}.exe`;
+    const tempDir = app.getPath('temp');
+    const targetPath = path.join(tempDir, targetFileName);
+
+    console.log(`[AutoUpdater] Starter direkte download: ${url} -> ${targetPath}`);
+    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('updater:progress', { percent: 2 }));
+
+    const client = url.startsWith('https:') ? require('https') : require('http');
+
+    await new Promise((resolve, reject) => {
+      const startReq = (reqUrl) => {
+        client.get(reqUrl, (response) => {
+          if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+            startReq(response.headers.location);
+            return;
+          }
+
+          if (response.statusCode !== 200) {
+            reject(new Error(`Serveren returnerede fejlkode ${response.statusCode}`));
+            return;
+          }
+
+          const totalLength = parseInt(response.headers['content-length'], 10) || 0;
+          let downloadedLength = 0;
+          const fileStream = fs.createWriteStream(targetPath);
+
+          response.on('data', (chunk) => {
+            downloadedLength += chunk.length;
+            if (totalLength > 0) {
+              const percent = Math.round((downloadedLength / totalLength) * 100);
+              BrowserWindow.getAllWindows().forEach(w => w.webContents.send('updater:progress', { percent }));
+            }
+          });
+
+          response.pipe(fileStream);
+
+          fileStream.on('finish', () => {
+            fileStream.close(() => {
+              console.log(`[AutoUpdater] Direkte download fuldført: ${targetPath} (${downloadedLength} bytes)`);
+              resolve();
+            });
+          });
+
+          fileStream.on('error', (err) => {
+            try { fs.unlinkSync(targetPath); } catch {}
+            reject(err);
+          });
+        }).on('error', reject);
+      };
+
+      startReq(url);
+    });
+
+    downloadedInstallerPath = targetPath;
+    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('updater:downloaded', { version, path: targetPath }));
+    return { success: true, path: targetPath };
+  } catch (err) {
+    console.error('[AutoUpdater] Direkte download fejl:', err.message);
+    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('updater:error', err.message));
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('open-external-url', async (event, targetUrl) => {
+  try {
+    if (targetUrl) {
+      await shell.openExternal(targetUrl);
+      return { success: true };
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('check-for-updates', async () => {
   if (isDev) {
     return { status: 'dev', message: 'Opdateringer er deaktiveret i udviklingstilstand.' };
@@ -399,7 +477,19 @@ ipcMain.handle('check-for-updates', async () => {
 
 ipcMain.handle('quit-and-install-update', () => {
   console.log('[AutoUpdater] quitAndInstall eksekveres...');
-  autoUpdater.quitAndInstall(false, true);
+  if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
+    console.log(`[AutoUpdater] Starter direkte downloadet installer: ${downloadedInstallerPath}`);
+    const child = spawn(downloadedInstallerPath, [], { detached: true, stdio: 'ignore' });
+    child.unref();
+    app.quit();
+    return;
+  }
+  try {
+    autoUpdater.quitAndInstall(false, true);
+  } catch (err) {
+    console.warn('[AutoUpdater] quitAndInstall fejlede, lukker appen:', err.message);
+    app.quit();
+  }
 });
 
 // Videresend auto-update events til frontend renderer med logning
@@ -460,6 +550,14 @@ async function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+
+  // Åbn eksterne links i brugerens standardbrowser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      shell.openExternal(url);
+    } catch {}
+    return { action: 'deny' };
+  });
 
   // Handle mouse side buttons (Back / Forward) and Windows app commands
   win.on('app-command', (event, cmd) => {
