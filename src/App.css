@@ -1,0 +1,1070 @@
+.os-workspace {
+  background-color: var(--bg-workspace, #000000);
+}
+
+/* Under aktiv resizing: lynhurtig respons, ingen tekstmarkering og ingen cursor-hop */
+.os-workspace.is-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.os-workspace.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.os-workspace.is-resizing .os-splitter {
+  pointer-events: auto !important;
+}
+
+.os-panel {
+  /* Ingen width transition for 100% responsiv og silkeblød ændring af størrelse */
+  transition: border-color 0.2s ease;
+  background-color: var(--bg-panel, #000000);
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  will-change: width, flex-basis;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.os-panel.active {
+  border: 1px solid var(--border-active, rgba(255, 255, 255, 0.25));
+}
+
+/* Elegant Splitter med større gribefelt og visuel feedback */
+.os-splitter {
+  width: 12px !important;
+  margin: 0 -3px;
+  background-color: transparent !important;
+  cursor: col-resize;
+  z-index: 100;
+  position: relative;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0 !important;
+}
+
+.os-splitter::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 0;
+  bottom: 0;
+  background-color: var(--border-subtle, rgba(255,255,255,0.1));
+  border-radius: 2px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, left 0.15s ease, right 0.15s ease;
+  pointer-events: none;
+}
+
+.os-splitter:hover::after,
+.os-splitter.dragging::after,
+.os-workspace.is-resizing .os-splitter::after {
+  left: 3px;
+  right: 3px;
+  background-color: var(--primary-accent, #2b579a);
+  box-shadow: 0 0 10px var(--primary-accent-glow, rgba(43, 87, 154, 0.6));
+}
+
+/* Subtilt og stilrent gribehåndtag på midten */
+.os-splitter::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 28px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.35);
+  opacity: 0;
+  transition: opacity 0.15s ease, height 0.15s ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.os-splitter:hover::before,
+.os-splitter.dragging::before,
+.os-workspace.is-resizing .os-splitter::before {
+  opacity: 1;
+  background: #ffffff;
+  height: 36px;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+/* Modern Panel Header */
+.os-panel-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 20px;
+  background-color: var(--bg-header, #0f0f0f);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  user-select: none;
+}
+
+.os-panel-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #666);
+  margin-left: 16px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.os-icon-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.os-icon-btn.back-btn {
+  margin-left: 0;
+}
+
+.os-icon-btn.forward-btn {
+  margin-left: 4px;
+}
+
+.os-icon-btn:hover:not(:disabled) {
+  background: var(--primary-accent-glow, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #fff);
+  border-color: var(--primary-accent, rgba(255, 255, 255, 0.2));
+  transform: scale(1.05);
+}
+
+.os-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.os-icon-btn.danger:hover {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.3);
+}
+
+.app-container {
+  display: flex;
+  flex-direction: row;
+  padding: 0; 
+  height: 100%; 
+  background-color: var(--bg-workspace, #000000);
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+/* =========================================
+   CONTEXT MENU (HØJREKLIK I TABEL)
+   ========================================= */
+.context-menu {
+  position: fixed;
+  background-color: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px 0;
+  min-width: 200px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.5);
+  z-index: 99999;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.context-menu-item {
+  padding: 10px 16px;
+  color: #eeeeee;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.context-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.context-menu-item.danger {
+  color: #ff6b6b;
+}
+
+.context-menu-item.danger:hover {
+  background-color: rgba(255, 107, 107, 0.1);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 4px 0;
+}
+
+/* =========================================
+   NAVIGATION SIDEBAR (VENSTRE SIDE)
+   ========================================= */
+.sidebar {
+  width: 350px;
+  flex-shrink: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 120px 30px 20px 30px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  z-index: 100; 
+  background-color: #000000; 
+  transition: width 0.3s ease, padding 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  cursor: pointer;
+  z-index: 101;
+  transition: left 0.3s ease, background-color 0.2s, color 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.sidebar-toggle-btn.open {
+  left: 350px;
+}
+
+.sidebar-toggle-btn.closed {
+  left: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.sidebar h3 {
+  font-size: 15px; /* Større overskrift */
+  text-transform: uppercase;
+  color: #555555;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+  font-weight: 700;
+}
+
+.sidebar .outline .tree-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Indrykning og lodret linje (trappen) for underoverskrifter */
+.sidebar .outline .tree-list .tree-list {
+  margin-left: 20px;
+  padding-left: 14px;
+  border-left: none; /* Fjernet - vi tegner den nu per element! */
+}
+
+/* For at sikre at pseudo-elementerne sidder rigtigt */
+.sidebar .outline li {
+  position: relative;
+}
+
+/* Den VANDRETTE streg der går ind til pillen */
+.sidebar .outline .tree-list .tree-list > li::before {
+  content: '';
+  position: absolute;
+  top: 20px; /* Opdateret til midten af den nye, større pille (ca. 41px høj) */
+  left: -14px; 
+  width: 14px;
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Den LODRETTE streg, som nu tegnes for hvert trin, så den kan stoppe! */
+.sidebar .outline .tree-list .tree-list > li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0; 
+  left: -16px; 
+  width: 2px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* For det første element i gruppen, skal stregen starte 8px højere for at nå forælderen */
+.sidebar .outline .tree-list .tree-list > li:first-child::after {
+  top: -8px; 
+}
+
+/* MAGIEN: For det SIDSTE element i gruppen skal stregen STOPE ved den vandrette streg! */
+.sidebar .outline .tree-list .tree-list > li:last-child::after {
+  bottom: auto;
+  height: 20px; /* Opdateret til den nye midte */
+}
+
+/* Hvis elementet BÅDE er det første og det sidste i gruppen */
+.sidebar .outline .tree-list .tree-list > li:first-child:last-child::after {
+  height: 28px; /* Fra -8px ned til 20px */
+}
+
+/* Selve pillen */
+.sidebar .outline .tree-item {
+  color: #cccccc;
+  font-size: 15px; /* Lidt større skrift */
+  padding: 10px 18px; /* Større pille! */
+  margin-bottom: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  
+  /* Lækkert "pille"-design */
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+/* Hover-effekt på pillen */
+.sidebar .outline .tree-item:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: translateX(4px);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* =========================================
+   LINEAL (RULER)
+   ========================================= */
+.ruler-container {
+  height: 24px;
+  width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.ruler-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  /* Meget renere design: kun et lille hak for hver 50px, i stedet for det tætte grid */
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 50px 30%;
+  background-position: left bottom;
+  background-repeat: repeat-x;
+}
+
+.ruler-marker {
+  position: absolute;
+  top: 0;
+  width: 14px;
+  height: 16px;
+  cursor: ew-resize;
+  z-index: 10;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  transition: transform 0.1s;
+}
+
+.ruler-marker:hover {
+  transform: scale(1.1);
+}
+
+.ruler-marker.left {
+  /* For at midten af trekanten peger præcis på margin-linjen (7px er halvdelen af 14px) */
+  margin-left: -7px;
+}
+
+.ruler-marker.right {
+  margin-right: -7px;
+}
+
+.sidebar .empty-state {
+  color: #444 !important;
+  font-style: italic;
+  cursor: default !important;
+}
+.sidebar .empty-state::before { display: none !important; }
+
+/* =========================================
+   EDITOR WRAPPER (HØJRE SIDE / MIDTEN)
+   ========================================= */
+.editor-wrapper {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 0 40px 0; /* Removed top padding since toolbar is now in flow */
+  scroll-padding-top: 100px; /* Space for the top toolbar */
+  display: flex;
+  flex-direction: column;
+  /* Removed align-items: center so children can stretch full width */
+}
+
+.editor-container,
+.rsw-editor,
+.editor-content-wrapper {
+  display: contents !important;
+}
+
+/* FIXED HEADER TIL IKONERNE - GOOGLE DOCS STYLE */
+.rsw-toolbar {
+  order: 1 !important;
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  height: auto !important;
+  background-color: #0f0f0f !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0 !important; 
+  padding: 4px 24px !important;
+  z-index: 1000 !important; 
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important; 
+  align-items: center !important;
+  gap: 0px !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  margin: 0 !important;
+}
+
+/* Separator linjer mellem ikon-grupper */
+.rsw-separator {
+  width: 1px !important;
+  height: 20px !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  margin: 0 6px !important;
+  border: none !important;
+}
+
+/* Styles Dropdown (Overskrift-vælger) */
+.rsw-dd {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: #eeeeee !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 0 24px 0 10px !important;
+  height: 32px !important;
+  font-size: 13px !important;
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  /* Custom pil til dropdown */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23aaaaaa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+  background-size: 12px !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+  min-width: 100px !important;
+  margin-left: 6px !important;
+}
+
+.rsw-dd:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Selve listen med valgmuligheder */
+.rsw-dd option {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+  font-weight: normal !important;
+}
+
+/* Knapperne i headeren */
+.rsw-btn {
+  color: #a0a0a0 !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  font-size: 14px !important;
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important; 
+  height: 32px !important; 
+  box-sizing: border-box !important;
+}
+
+/* Gør tekst-ikoner som B, I, U og ab rene og pæne uden overdrevet fed skrift */
+.rsw-btn[title="Bold"] { 
+  font-weight: 700 !important; 
+  font-size: 15px !important; 
+}
+
+.rsw-btn[title="Italic"] { 
+  font-style: italic !important; 
+  font-size: 15px !important; 
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+}
+
+.rsw-btn[title="Underline"] { 
+  text-decoration: underline !important; 
+  font-weight: 400 !important; /* Normal tykkelse */
+  font-size: 15px !important; 
+}
+
+.rsw-btn[title="Strike through"] { 
+  text-decoration: line-through !important; 
+  font-weight: 400 !important; /* Normal tykkelse */
+  font-size: 15px !important; 
+}
+
+
+.rsw-btn:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* NÅR EN FUNKTION (FX FED ELLER KURSIV) ER AKTIV */
+.rsw-btn[data-active="true"] {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 12px rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+}
+
+.rsw-btn:active {
+  transform: translateY(0);
+}
+
+/* SELVE SIDEN MAN SKRIVER PÅ */
+.rsw-ce {
+  order: 3 !important;
+  background-color: #000000 !important; /* 100% HELT SORT */
+  color: #ffffff !important;
+  width: 100%;
+  max-width: 900px !important; /* Constrain width for page view */
+  margin: 20px auto 0 auto !important; /* Center on screen */
+  min-height: calc(100vh - 140px) !important; /* Fylder næsten hele højden */
+  padding: 20px var(--margin-right, 0px) 20px var(--margin-left, 0px) !important; /* VIGTIGT: Venstre/højre styres nu af linealen! */
+  font-size: 18px !important;
+  line-height: 1.8 !important;
+  outline: none !important;
+  border: none !important; /* Ingen synlige streger */
+  border-radius: 0 !important; /* Fjerner også afrunding, da den ikke længere har en kant */
+  box-shadow: none !important; /* Ingen skygge streger */
+}
+
+.ruler-container {
+  order: 2 !important;
+  width: 100%;
+  max-width: 900px !important;
+  margin: 40px auto 20px auto !important;
+}
+
+/* placeholder tekst farve */
+.rsw-ce[data-placeholder]:empty:before {
+  color: #555 !important;
+}
+
+/* TABEL STYLING */
+.rsw-ce table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5em;
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.rsw-ce th, .rsw-ce td {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 16px;
+  vertical-align: top;
+}
+
+.rsw-ce th {
+  background-color: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+}
+
+/* =========================================
+   STYLING AF OVERSKRIFTER INDE I DOKUMENTET
+   ========================================= */
+.rsw-ce h1 {
+  font-size: 38px !important;
+  font-weight: 800 !important;
+  margin-top: 40px !important;
+  margin-bottom: 20px !important;
+  line-height: 1.2 !important;
+}
+
+.rsw-ce h2 {
+  font-size: 30px !important;
+  font-weight: 700 !important;
+  margin-top: 32px !important;
+  margin-bottom: 16px !important;
+  line-height: 1.3 !important;
+}
+
+.rsw-ce h3 {
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  margin-top: 26px !important;
+  margin-bottom: 12px !important;
+  line-height: 1.4 !important;
+}
+
+.rsw-ce h4 {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  margin-top: 22px !important;
+  margin-bottom: 10px !important;
+  line-height: 1.5 !important;
+  color: #dddddd !important; /* Lidt lysere/svagere end de store */
+}
+
+.rsw-ce div, .rsw-ce p {
+  font-size: 18px !important;
+  line-height: 1.8 !important;
+  margin-bottom: 12px !important;
+}
+
+/* =========================================
+   CHECKBOX / TJEKLISTE STYLING
+   ========================================= */
+.rsw-ce input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px !important;
+  height: 20px !important;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  top: 7px; /* Justeret for at flugte perfekt med 18px tekst */
+  transition: all 0.2s ease;
+  margin: 0;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.rsw-ce input[type="checkbox"]:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.rsw-ce input[type="checkbox"]:checked {
+  background-color: #4a90e2; /* Blå accent farve */
+  border-color: #4a90e2;
+}
+
+.rsw-ce input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.rsw-ce .checklist input[type="checkbox"]:checked + span {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+/* =========================================
+   CUSTOM DROPDOWN
+   ========================================= */
+.custom-dd {
+  position: relative;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  margin-left: 8px;
+}
+.custom-dd-header {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #eeeeee;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 100px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.custom-dd-header span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 85px;
+}
+.custom-dd-header:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.custom-dd-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background-color: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px 0;
+  min-width: 100%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.5);
+  z-index: 99999;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.custom-dd-item {
+  padding: 12px 20px;
+  color: #eeeeee;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.1s;
+  white-space: nowrap;
+}
+.custom-dd-item:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* =========================================
+   TOGGLE KNAP TIL WEB / PAGE VIEW
+   ========================================= */
+.view-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 2px;
+  cursor: pointer;
+  margin-left: auto; /* Skubber til højre */
+  user-select: none;
+}
+.view-toggle span {
+  position: relative;
+  z-index: 2;
+  padding: 4px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #777;
+  transition: color 0.3s;
+  display: inline-block;
+  width: 45px;
+  text-align: center;
+}
+.view-toggle span.active {
+  color: #fff;
+}
+.view-toggle-slider {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 45px;
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+.view-toggle-slider.web {
+  transform: translateX(0);
+}
+.view-toggle-slider.page {
+  transform: translateX(45px);
+}
+
+/* =========================================
+   WEB-VIEW VS PAGE-VIEW
+   ========================================= */
+.editor-container.web-view {
+  max-width: 794px;
+  transition: max-width 0.3s ease;
+}
+.editor-container.page-view {
+  max-width: 794px;
+  background-color: transparent;
+  transition: all 0.3s ease;
+}
+
+.editor-wrapper {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 0 40px 0;
+  scroll-padding-top: 100px;
+  display: flex;
+}
+
+.editor-container.page-view .rsw-ce {
+  max-width: 794px !important;
+  background-color: transparent !important;
+  color: #000000 !important; /* Text is black on the white pages */
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  margin-bottom: 60px !important;
+  position: relative;
+  z-index: 1; /* Above the page backgrounds */
+  padding-top: var(--margin-top, 96px) !important;
+  padding-bottom: var(--margin-bottom, 96px) !important;
+  min-height: 1123px !important;
+}
+
+/* Ensure headings and text are black in page view */
+.editor-container.page-view .rsw-ce h1,
+.editor-container.page-view .rsw-ce h2,
+.editor-container.page-view .rsw-ce h3,
+.editor-container.page-view .rsw-ce h4,
+.editor-container.page-view .rsw-ce div,
+.editor-container.page-view .rsw-ce p,
+.editor-container.page-view .rsw-ce span {
+  color: inherit !important;
+}
+
+.editor-container.page-view .rsw-ce table {
+  background-color: transparent;
+}
+.editor-container.page-view .rsw-ce th,
+.editor-container.page-view .rsw-ce td {
+  border: 1px solid #ccc;
+}
+.editor-container.page-view .rsw-ce th {
+  background-color: #f5f5f5;
+}
+
+
+.editor-container.page-view .ruler-container {
+  max-width: 794px !important;
+}
+
+/* =========================================
+   TOP MENU BAR (Fil, etc.) - NU INDBYGGET I TOOLBAR
+   ========================================= */
+.toolbar-top-row {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toolbar-bottom-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.top-menu-item {
+  position: relative;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #cccccc;
+  font-size: 14px;
+}
+
+.top-menu-label {
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.top-menu-label:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.top-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  min-width: 200px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  z-index: 99999;
+  padding: 6px 0;
+  margin-top: 4px;
+}
+
+.top-menu-dropdown-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  color: #eeeeee;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.top-menu-dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.has-submenu {
+  position: relative;
+}
+
+.submenu-arrow {
+  font-size: 9px;
+  margin-left: 16px;
+  color: #777777;
+}
+
+.top-menu-submenu {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 100%; /* Sørger for at den popper ud til højre */
+  background-color: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  min-width: 150px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  padding: 6px 0;
+  margin-left: 2px;
+  z-index: 100000;
+}
+
+/* Vis dropdown'en når vi holder musen over parent-elementet */
+.has-submenu:hover .top-menu-submenu {
+  display: block;
+}
+
+@media print {
+  .top-menu-bar {
+    display: none !important;
+  }
+}
+
+/* =========================================
+   PRINT OG PDF EKSPORT
+   ========================================= */
+@media print {
+  /* Tving A4 størrelse og fjern browserens standard-margener (så det flugter med dine 1123px on-screen) */
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  /* Skjul al UI */
+  .rsw-toolbar,
+  .ruler-container,
+  .view-toggle {
+    display: none !important;
+  }
+
+  /* Tving dokumentet til hvid baggrund og sort tekst */
+  body, html, #root, .editor-wrapper, .editor-container, .rsw-editor, .rsw-ce {
+  
+    background-color: #ffffff !important;
+    background-image: none !important; /* Fjerner de falske page-breaks */
+    color: #000000 !important;
+  }
+
+  /* Tving alt indhold i editoren til sort for læsbarhed på print */
+  .rsw-ce * {
+    color: #000000 !important;
+  }
+
+  /* Sæt præcis bredde for at undgå at browseren skalerer teksten ned */
+  .editor-container {
+    max-width: 794px !important;
+    margin: 0 auto !important;
+    padding-top: var(--print-offset, 0px) !important;
+  }
+}
+
+/* =========================================
+   EDITOR TOP NAV (Titel og Indstillinger)
+   ========================================= */
+.editor-top-nav {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1001; /* Over sidebar */
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  transform: translateX(-2px);
+}
+
+.doc-title-input {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #eeeeee;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: 250px;
+  transition: all 0.2s;
+}
+
+.doc-title-input:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.doc-title-input:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.5);
+  border-color: #4a90e2;
+}
+
+

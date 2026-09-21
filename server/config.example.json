@@ -1,0 +1,55 @@
+{
+  "activeProvider": "ollama",
+  "providers": {
+    "ollama": {
+      "name": "Lokal Ollama (Tekst-AI)",
+      "host": "http://localhost:11434",
+      "model": "llama3"
+    },
+    "gemini": {
+      "name": "Google Gemini (Tekst & Billeder)",
+      "apiKey": "",
+      "model": "gemini-2.5-flash"
+    },
+    "openai": {
+      "name": "OpenAI (ChatGPT)",
+      "apiKey": "",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini"
+    },
+    "anthropic": {
+      "name": "Anthropic (Claude)",
+      "apiKey": "",
+      "model": "claude-3-5-sonnet-20241022"
+    },
+    "groq": {
+      "name": "Groq (Hurtig Llama)",
+      "apiKey": "",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile"
+    },
+    "deepseek": {
+      "name": "DeepSeek",
+      "apiKey": "",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "model": "deepseek-chat"
+    },
+    "custom": {
+      "name": "Brugerdefineret API (LM Studio, LocalAI mv.)",
+      "baseUrl": "http://127.0.0.1:1234/v1",
+      "apiKey": "",
+      "model": ""
+    }
+  },
+  "imt": {
+    "name": "ImT Billed-AI (OCR)",
+    "description": "Modellen der laeser og udtrækker tekst fra billeder. Brug enten en lokal vision-model som 'qwen2.5vl:3b' eller 'gemini-1.5-flash'.",
+    "provider": "ollama",
+    "model": "qwen2.5vl:3b",
+    "contextSize": 16384
+  },
+  "languagetool": {
+    "url": "http://127.0.0.1:8011/v2",
+    "language": "da-DK"
+  }
+}

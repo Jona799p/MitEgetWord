@@ -1,0 +1,163 @@
+.nodeWrapper {
+  display: flex;
+  width: 100%;
+  position: relative;
+  line-height: normal;
+  margin: 16px 0;
+  clear: both;
+  box-sizing: border-box;
+}
+
+.nodeWrapper.align-left {
+  justify-content: flex-start;
+}
+
+.nodeWrapper.align-center {
+  justify-content: center;
+}
+
+.nodeWrapper.align-right {
+  justify-content: flex-end;
+}
+
+.imageContainer {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.imageEl {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  user-select: none;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.imageContainer.isSelected .imageEl {
+  box-shadow: 0 0 0 2px #4a90e2, 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Floating Toolbar */
+.floatingToolbar {
+  position: absolute;
+  top: -46px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  line-height: normal;
+  animation: popIn 0.12s ease-out;
+  white-space: nowrap;
+}
+
+.nodeWrapper.align-left .floatingToolbar {
+  left: 0;
+  transform: none;
+}
+
+.nodeWrapper.align-right .floatingToolbar {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.toolbarBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #aaaaaa;
+  cursor: pointer;
+  padding: 4px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.toolbarBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.toolbarBtn.activeBtn {
+  background: rgba(74, 144, 226, 0.2);
+  color: #4a90e2;
+  border-color: rgba(74, 144, 226, 0.4);
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 3px;
+}
+
+.deleteBtn {
+  color: #ef4444;
+}
+
+.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+/* Resize Handles */
+.resizeHandle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: #4a90e2;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+  touch-action: none;
+}
+
+.handleBR {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+.handleBL {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.handleTR {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.handleTL {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}

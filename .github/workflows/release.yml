@@ -1,0 +1,33 @@
+name: Byg og Udgiv MitEgetWord
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Byg Windows Installationsfil (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Hent kildekode
+        uses: actions/checkout@v4
+
+      - name: Opsæt Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Installer afhængigheder
+        run: npm ci
+
+      - name: Byg frontend og Electron installationspakke
+        run: npm run electron:build -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

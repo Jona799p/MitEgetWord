@@ -1,0 +1,101 @@
+{
+  "name": "mitegetword",
+  "private": true,
+  "version": "1.0.10",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "server": "node --max-old-space-size=4096 server/index.cjs",
+    "electron:dev": "cross-env NODE_ENV=development concurrently \"npm run dev\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build": "vite build",
+    "electron:build": "npm run build && electron-builder",
+    "bump": "node scripts/bump-version.cjs",
+    "release": "node scripts/bump-version.cjs patch && npm run electron:build && node scripts/publish-update.cjs",
+    "release:minor": "node scripts/bump-version.cjs minor && npm run electron:build && node scripts/publish-update.cjs",
+    "release:publish": "electron-builder --publish always",
+    "deploy:server": "node scripts/deploy-server.cjs",
+    "preview": "vite preview",
+    "start:all": "concurrently \"npm run server\" \"npm run electron:dev\""
+  },
+  "dependencies": {
+    "@tiptap/extension-color": "^3.31.3",
+    "@tiptap/extension-font-family": "^3.31.3",
+    "@tiptap/extension-highlight": "^3.31.3",
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-link": "^3.31.3",
+    "@tiptap/extension-subscript": "^3.31.3",
+    "@tiptap/extension-superscript": "^3.31.3",
+    "@tiptap/extension-table": "^3.31.3",
+    "@tiptap/extension-table-cell": "^3.31.3",
+    "@tiptap/extension-table-header": "^3.31.3",
+    "@tiptap/extension-table-row": "^3.31.3",
+    "@tiptap/extension-text-align": "^3.31.3",
+    "@tiptap/extension-text-style": "^3.31.3",
+    "@tiptap/extension-underline": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "body-parser": "^2.3.0",
+    "cors": "^2.8.6",
+    "electron-updater": "^6.8.9",
+    "express": "^5.2.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.2",
+    "lucide-react": "^1.46.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.18.3",
+    "react-simple-wysiwyg": "^3.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2",
+    "vite": "^5.2.0",
+    "wait-on": "^9.1.0"
+  },
+  "build": {
+    "appId": "com.jonas.mitegetword",
+    "productName": "MitEgetWord",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MitEgetWord"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "CyAim",
+        "repo": "MitEgetWord"
+      }
+    ]
+  }
+}

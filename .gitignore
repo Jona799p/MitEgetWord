@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Production builds
+dist/
+dist-electron/
+
+# User documents and local storage
+documents/
+**/data/
+**/documents/
+**/updates/
+
+# Sensitive configuration & keys
+**/config.json
+!**/config.example.json
+.env
+.env.*
+*.log
+
+# OS metadata
+Thumbs.db
+.DS_Store
+

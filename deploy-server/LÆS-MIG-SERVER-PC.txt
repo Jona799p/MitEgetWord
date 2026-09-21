@@ -1,0 +1,51 @@
+============================================================
+       MITEGETWORD - CENTRAL SERVER PC OPSÆTNING
+============================================================
+
+Denne mappe indeholder alt hvad din Server-PC skal bruge for at:
+ 1. Hoste delte dokumenter og mapper for MitEgetWord
+ 2. Køre central AI (Ollama) og OCR (ImT) for alle klient-computere
+ 3. Udsende automatiske opdateringer til klienterne
+
+------------------------------------------------------------
+KRAV PÅ DIN SERVER-PC:
+------------------------------------------------------------
+1. Node.js (Version 18 eller nyere):
+   Hent og installer fra: https://nodejs.org
+   (Vælg blot 'LTS' versionen og standardindstillinger)
+
+2. Ollama (hvis du vil have gratis lokal AI på serveren):
+   Hent og installer fra: https://ollama.com
+   Åbn kommandoprompt / terminal og hent den ønskede model, f.eks.:
+   ollama run llama3
+
+------------------------------------------------------------
+SÅDAN STARTER DU SERVEREN:
+------------------------------------------------------------
+1. Dobbeltklik på filen:
+   start-server.bat
+
+2. Første gang du kører filen, installerer den automatisk
+   de nødvendige moduler på få sekunder.
+
+3. I det sorte vindue vil der stå serverens IP-adresse, f.eks.:
+   -> Fundet IP: 192.168.0.184
+   -> Tilgængelige adresser: http://192.168.0.184:3000
+
+4. Lad dette vindue stå åbent på Server-PC'en.
+
+------------------------------------------------------------
+PÅ DINE ANDRE COMPUTERE (KLIENTERNE):
+------------------------------------------------------------
+1. Installer og åbn MitEgetWord (MitEgetWord Setup 1.0.0.exe).
+2. Tryk Ctrl + , (eller tandhjulet) for at åbne Indstillinger:
+   - Gå til fanen "Server":
+     Indtast serverens IP, f.eks. http://192.168.0.184:3000
+     Klik "Test forbindelse" og derefter "Gem ændringer".
+   - Gå til fanen "AI Assistent":
+     Vælg "🖥️ Server PC (Central AI)".
+     Indtast modelnavnet (f.eks. llama3).
+     Klik "Gem ændringer".
+
+Nu kører al AI og dokumentstyring igennem din Server-PC!
+============================================================

@@ -1,0 +1,230 @@
+/* Update Notification Card */
+.update-notification-card {
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  width: 360px;
+  background: rgba(22, 27, 34, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #f0f6fc;
+  font-family: inherit;
+  animation: slideInDown 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.update-notification-card.downloaded {
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(34, 197, 94, 0.2);
+}
+
+.update-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.update-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.update-icon.primary {
+  color: #38bdf8;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+.update-icon.success {
+  color: #22c55e;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.1); }
+}
+
+.update-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.update-close-btn {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.update-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f6fc;
+}
+
+.update-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.update-card-desc {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #c9d1d9;
+  margin: 0;
+}
+
+.update-card-desc.error {
+  color: #f87171;
+}
+
+/* Progress bar */
+.update-progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.update-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  border-radius: 4px;
+  transition: width 0.25s ease;
+}
+
+/* Actions */
+.update-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.update-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.update-action-btn.primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.update-action-btn.primary:hover {
+  background: #1d4ed8;
+}
+
+.update-notification-card.downloaded .update-action-btn.primary {
+  background: #16a34a;
+}
+
+.update-notification-card.downloaded .update-action-btn.primary:hover {
+  background: #15803d;
+}
+
+.update-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #c9d1d9;
+}
+
+.update-action-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.update-action-btn.link {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.update-action-btn.link:hover {
+  background: rgba(56, 189, 248, 0.22);
+}
+
+/* Minimized Pill in Top Right */
+.update-pill-minimized {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  background: rgba(22, 27, 34, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 20px;
+  padding: 6px 12px 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 999999;
+  transition: all 0.2s ease;
+  animation: fadeIn 0.2s ease;
+}
+
+.update-pill-minimized:hover {
+  background: rgba(30, 41, 59, 0.98);
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+.update-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: pulse 1.8s infinite;
+}
+
+.update-pill-text {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.update-pill-arrow {
+  color: #94a3b8;
+}
