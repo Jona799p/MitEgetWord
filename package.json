@@ -1,7 +1,7 @@
 {
   "name": "mitegetword",
   "private": true,
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "MitEgetWord - Tekstbehandling og AI Hub",
   "author": "Jonas",
   "type": "module",
@@ -102,4 +102,3 @@
     ]
   }
 }
-
