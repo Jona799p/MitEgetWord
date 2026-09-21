@@ -1,7 +1,9 @@
 {
   "name": "mitegetword",
   "private": true,
-  "version": "1.0.13",
+  "version": "1.0.14",
+  "description": "MitEgetWord - Tekstbehandling og AI Hub",
+  "author": "Jonas",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -19,6 +21,10 @@
     "start:all": "concurrently \"npm run server\" \"npm run electron:dev\""
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
+    "jszip": "^3.10.2"
+  },
+  "devDependencies": {
     "@tiptap/extension-color": "^3.31.3",
     "@tiptap/extension-font-family": "^3.31.3",
     "@tiptap/extension-highlight": "^3.31.3",
@@ -35,28 +41,24 @@
     "@tiptap/extension-underline": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
-    "body-parser": "^2.3.0",
-    "cors": "^2.8.6",
-    "electron-updater": "^6.8.9",
-    "express": "^5.2.1",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
-    "jszip": "^3.10.2",
-    "lucide-react": "^1.46.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^7.18.3",
-    "react-simple-wysiwyg": "^3.1.2"
-  },
-  "devDependencies": {
     "@types/node": "^26.6.2",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.2.1",
+    "body-parser": "^2.3.0",
     "concurrently": "^10.0.5",
+    "cors": "^2.8.6",
     "cross-env": "^10.1.0",
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
+    "express": "^5.2.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^1.46.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.18.3",
+    "react-simple-wysiwyg": "^3.1.2",
     "typescript": "^7.0.2",
     "vite": "^5.2.0",
     "wait-on": "^9.1.0"
@@ -64,6 +66,7 @@
   "build": {
     "appId": "com.jonas.mitegetword",
     "productName": "MitEgetWord",
+    "npmRebuild": false,
     "directories": {
       "output": "dist-electron"
     },
@@ -99,3 +102,4 @@
     ]
   }
 }
+
