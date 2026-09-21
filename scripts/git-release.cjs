@@ -58,7 +58,7 @@ if (pushed) {
   console.log(`[SUCCES] Koden og tagget ${tagName} er pushet til GitHub!`);
   console.log('GitHub Actions vil nu automatisk bygge installationsfilen');
   console.log('og oprette din GitHub Release i skyen.');
-  console.log(`Følg bygningen her: https://github.com/CyAim/MitEgetWord/actions`);
+  console.log(`Følg bygningen her: https://github.com/Jona799p/MitEgetWord/actions`);
   console.log('========================================================\n');
 } else {
   console.log('\n[INFO] Kunne ikke auto-pushe til GitHub (kræver måske login/token).');

@@ -57,7 +57,7 @@ const UpdateNotification = () => {
 
     // 1. Tjek GitHub Releases (hurtigt og tilgængeligt overalt)
     try {
-      const ghRes = await fetch('https://api.github.com/repos/CyAim/MitEgetWord/releases/latest', {
+      const ghRes = await fetch('https://api.github.com/repos/Jona799p/MitEgetWord/releases/latest', {
         headers: { 'Accept': 'application/vnd.github.v3+json' },
         signal: AbortSignal.timeout(3500)
       });

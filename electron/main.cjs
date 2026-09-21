@@ -35,10 +35,10 @@ function setupAutoUpdaterFeed() {
   try {
     autoUpdater.setFeedURL({
       provider: 'github',
-      owner: 'CyAim',
+      owner: 'Jona799p',
       repo: 'MitEgetWord'
     });
-    console.log('[AutoUpdater] Konfigureret til GitHub Releases (CyAim/MitEgetWord)');
+    console.log('[AutoUpdater] Konfigureret til GitHub Releases (Jona799p/MitEgetWord)');
   } catch (err) {
     console.warn('[AutoUpdater] Fejl ved opsætning af GitHub feed:', err.message);
   }
@@ -345,16 +345,16 @@ ipcMain.handle('set-update-url', (event, serverUrl) => {
       // Nulstil til officiel GitHub Releases feed
       autoUpdater.setFeedURL({
         provider: 'github',
-        owner: 'CyAim',
+        owner: 'Jona799p',
         repo: 'MitEgetWord'
       });
-      console.log(`[AutoUpdater] Feed URL nulstillet til GitHub Releases (CyAim/MitEgetWord)`);
+      console.log(`[AutoUpdater] Feed URL nulstillet til GitHub Releases (Jona799p/MitEgetWord)`);
 
       try {
         fs.writeFileSync(configPath, JSON.stringify({ serverUrl: '', useServerUpdates: false }), 'utf-8');
       } catch {}
 
-      return { success: true, url: 'github:CyAim/MitEgetWord' };
+      return { success: true, url: 'github:Jona799p/MitEgetWord' };
     }
   } catch (err) {
     return { success: false, error: err.message };
