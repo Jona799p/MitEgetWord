@@ -31,9 +31,49 @@ export const checkServerStatus = async () => {
 export const LOCAL_DOCS_KEY = 'mitEgetWord_local_docs';
 export const SYNC_QUEUE_KEY = 'mitEgetWord_sync_queue';
 export const SERVER_CACHE_KEY = 'mitEgetWord_server_cache_docs';
+export const LOCAL_SAVED_IDS_KEY = 'mitEgetWord_locally_saved_ids';
 
 let inMemoryLocalDocs = null;
 let inMemoryServerCache = null;
+let inMemoryLocallySavedIds = null;
+
+export const getLocallySavedIds = () => {
+  if (inMemoryLocallySavedIds !== null) return inMemoryLocallySavedIds;
+  try {
+    const raw = localStorage.getItem(LOCAL_SAVED_IDS_KEY);
+    if (raw) {
+      inMemoryLocallySavedIds = new Set(JSON.parse(raw));
+      return inMemoryLocallySavedIds;
+    }
+  } catch {}
+
+  // Første kørsel: Initialiser fra lokale dokumenter
+  const local = getLocalDocs();
+  inMemoryLocallySavedIds = new Set(
+    local.filter(d => !d.inTrash && (d.isSavedLocally || d.syncStatus === 'pending_upload')).map(d => d.id)
+  );
+  try {
+    localStorage.setItem(LOCAL_SAVED_IDS_KEY, JSON.stringify(Array.from(inMemoryLocallySavedIds)));
+  } catch {}
+  return inMemoryLocallySavedIds;
+};
+
+export const setLocallySavedIds = (idSet) => {
+  inMemoryLocallySavedIds = idSet;
+  try {
+    localStorage.setItem(LOCAL_SAVED_IDS_KEY, JSON.stringify(Array.from(idSet)));
+  } catch {}
+};
+
+export const markDocumentLocallySaved = (id, isSaved) => {
+  const ids = new Set(getLocallySavedIds());
+  if (isSaved) {
+    ids.add(id);
+  } else {
+    ids.delete(id);
+  }
+  setLocallySavedIds(ids);
+};
 
 export const safeSetServerCache = (docs) => {
   if (!Array.isArray(docs)) return;
@@ -206,11 +246,11 @@ export const saveDocumentLocallyToDisk = async (doc, oldTitle = null) => {
   return { success: false };
 };
 
-export const deleteDocumentFromDisk = async (title) => {
+export const deleteDocumentFromDisk = async (title, filePath = null) => {
   const electron = getElectron();
   if (electron?.ipcRenderer?.invoke) {
     try {
-      return await electron.ipcRenderer.invoke('delete-local-document', { title });
+      return await electron.ipcRenderer.invoke('delete-local-document', { title, filePath });
     } catch (err) {
       console.warn('IPC delete-local-document fejlede:', err);
     }
@@ -254,12 +294,14 @@ export const cleanupLocalHtmlFiles = () => {
 export const getLocalDocumentsCount = () => {
   cleanupLocalHtmlFiles();
   const local = getLocalDocs();
-  return local.filter(d => !d.inTrash && (d.isSavedLocally || d.syncStatus === 'pending_upload')).length;
+  const localSavedIds = getLocallySavedIds();
+  return local.filter(d => !d.inTrash && (localSavedIds.has(d.id) || d.isSavedLocally || d.syncStatus === 'pending_upload')).length;
 };
 
 export const getDocuments = async (options = {}) => {
   cleanupLocalHtmlFiles();
   const localDocs = getLocalDocs();
+  const localSavedIds = getLocallySavedIds();
   let serverDocs = null;
 
   try {
@@ -282,25 +324,29 @@ export const getDocuments = async (options = {}) => {
 
     const merged = serverDocs.map(serverDoc => {
       const localDoc = localMap.get(serverDoc.id);
+      // Hvorvidt dokumentet er gemt lokalt bestemmes af denne pc's lokale ID-liste
+      const isSavedLocallyOnThisPc = localSavedIds.has(serverDoc.id) || (localDoc ? !!localDoc.isSavedLocally : false);
+
       if (localDoc) {
         localMap.delete(serverDoc.id);
         // Hvis lokalt dokument afventer synkronisering, behold de lokale offline ændringer
         if (syncQueue.has(localDoc.id) || localDoc.syncStatus === 'pending_upload') {
           return {
             ...localDoc,
+            isSavedLocally: isSavedLocallyOnThisPc,
             syncStatus: 'pending_upload'
           };
         }
-        // Ellers brug nyeste data fra server, men bevar isSavedLocally-flaget
+        // Ellers brug nyeste data fra server, men bevar denne pc's lokale gemme-status
         return {
           ...serverDoc,
-          isSavedLocally: localDoc.isSavedLocally ?? serverDoc.isSavedLocally ?? false,
+          isSavedLocally: isSavedLocallyOnThisPc,
           syncStatus: 'synced'
         };
       }
       return {
         ...serverDoc,
-        isSavedLocally: serverDoc.isSavedLocally ?? false,
+        isSavedLocally: isSavedLocallyOnThisPc,
         syncStatus: 'synced'
       };
     });
@@ -310,8 +356,8 @@ export const getDocuments = async (options = {}) => {
       merged.unshift(localDoc);
     }
 
-    // Opdater den lokale backup for dokumenter gemt lokalt
-    const updatedLocals = merged.filter(d => !!d.isSavedLocally || d.syncStatus === 'pending_upload');
+    // Opdater den lokale backup KUN for dokumenter der er gemt lokalt på denne pc
+    const updatedLocals = merged.filter(d => !d.inTrash && (localSavedIds.has(d.id) || !!d.isSavedLocally || d.syncStatus === 'pending_upload'));
     setLocalDocs(updatedLocals);
 
     return merged;
@@ -324,7 +370,12 @@ export const getDocuments = async (options = {}) => {
   } catch {}
 
   const mergedOfflineMap = new Map();
-  cachedDocs.forEach(d => mergedOfflineMap.set(d.id, d));
+  cachedDocs.forEach(d => {
+    mergedOfflineMap.set(d.id, {
+      ...d,
+      isSavedLocally: localSavedIds.has(d.id) || !!d.isSavedLocally
+    });
+  });
   localDocs.forEach(d => mergedOfflineMap.set(d.id, d));
 
   return Array.from(mergedOfflineMap.values());
@@ -333,17 +384,18 @@ export const getDocuments = async (options = {}) => {
 export const getDocument = async (id) => {
   const localDocs = getLocalDocs();
   const localDoc = localDocs.find(d => d.id === id);
+  const isLocalOnPc = getLocallySavedIds().has(id) || (localDoc ? !!localDoc.isSavedLocally : false);
 
   try {
     const res = await fetch(`${getServerUrl()}/api/docs/${id}`, { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const serverDoc = await res.json();
       if (localDoc && (localDoc.syncStatus === 'pending_upload')) {
-        return localDoc;
+        return { ...localDoc, isSavedLocally: isLocalOnPc };
       }
       return {
         ...serverDoc,
-        isSavedLocally: localDoc ? !!localDoc.isSavedLocally : !!serverDoc.isSavedLocally,
+        isSavedLocally: isLocalOnPc,
         syncStatus: 'synced'
       };
     }
@@ -351,12 +403,12 @@ export const getDocument = async (id) => {
     console.warn('Fejl ved hentning af dokument fra server, bruger lokal kopi:', error);
   }
 
-  if (localDoc) return localDoc;
+  if (localDoc) return { ...localDoc, isSavedLocally: isLocalOnPc };
 
   try {
     const cachedDocs = JSON.parse(localStorage.getItem(SERVER_CACHE_KEY) || '[]');
     const cached = cachedDocs.find(d => d.id === id);
-    if (cached) return cached;
+    if (cached) return { ...cached, isSavedLocally: isLocalOnPc };
   } catch {}
 
   return null;
@@ -514,7 +566,9 @@ export const saveDocument = async (id, title, content, thumbnail, isFavorite, fo
   const existing = existingLocal || existingCached || {};
   const existingIndex = localDocs.findIndex(d => d.id === id);
 
-  const docIsSavedLocally = isSavedLocally !== undefined ? isSavedLocally : (existing.isSavedLocally ?? false);
+  const localIds = getLocallySavedIds();
+  const docIsSavedLocally = isSavedLocally !== undefined ? isSavedLocally : (localIds.has(id) || (existing.isSavedLocally ?? false));
+  markDocumentLocallySaved(id, docIsSavedLocally);
 
   // Bevar altid eksisterende værdier hvis intet specifikt sendes (undefined)
   const resolvedFolderId = folderId !== undefined ? folderId : (existing.folderId !== undefined ? existing.folderId : null);
@@ -642,13 +696,34 @@ export const createDocument = async (title = 'Navnløst dokument', content = '<p
 };
 
 export const toggleSaveLocally = async (id, forceState) => {
-  const doc = await getDocument(id);
+  let doc = await getDocument(id);
+  if (!doc) {
+    const all = [...getLocalDocs(), ...getServerCache()];
+    doc = all.find(d => d.id === id);
+  }
   if (!doc) return null;
 
-  const newIsSaved = forceState !== undefined ? forceState : !doc.isSavedLocally;
+  const currentlySaved = getLocallySavedIds().has(id) || !!doc.isSavedLocally;
+  const newIsSaved = forceState !== undefined ? forceState : !currentlySaved;
   const localDocs = getLocalDocs();
 
   if (newIsSaved) {
+    // Hvis dokumentets indhold ikke er fuldt indlæst, hent det fra serveren
+    if (!doc.content || doc.content.length < 20) {
+      try {
+        const res = await fetch(`${getServerUrl()}/api/docs/${id}`, { signal: AbortSignal.timeout(10000) });
+        if (res.ok) {
+          const fullDoc = await res.json();
+          if (fullDoc && fullDoc.content) {
+            doc = { ...doc, ...fullDoc };
+          }
+        }
+      } catch (err) {
+        console.warn('Kunne ikke hente fuldt dokument til lokal lagring:', err);
+      }
+    }
+
+    markDocumentLocallySaved(id, true);
     const updated = {
       ...doc,
       isSavedLocally: true,
@@ -657,6 +732,10 @@ export const toggleSaveLocally = async (id, forceState) => {
     const nextLocals = localDocs.filter(d => d.id !== id);
     nextLocals.unshift(updated);
     setLocalDocs(nextLocals);
+
+    // Opdater cache
+    const currentCached = getServerCache();
+    safeSetServerCache(currentCached.map(d => d.id === id ? { ...d, isSavedLocally: true } : d));
 
     // Gem dokumentet fysisk på disken i den lokale Dokumenter/MitEgetWord mappe som .docx
     try {
@@ -676,17 +755,32 @@ export const toggleSaveLocally = async (id, forceState) => {
 
     return updated;
   } else {
+    // FJERNER FRA DENNE COMPUTER:
+    // 1. Fjern fra registrerede lokale ID'er på denne PC
+    markDocumentLocallySaved(id, false);
+
+    // 2. Fjern fra lokale dokumenter
     const nextLocals = localDocs.filter(d => d.id !== id);
     setLocalDocs(nextLocals);
     removeFromSyncQueue(id);
 
-    // Slet fysisk fra disken
+    // 3. Markér titlen i nyligt slettede så disk-scanneren ikke genopretter den
+    if (doc.title) {
+      markTitleAsDeleted(doc.title);
+    }
+
+    // 4. Slet fysisk fra computerens disk
     try {
       await deleteDocumentFromDisk(doc.title);
     } catch (e) {
       console.warn('Kunne ikke fjerne lokal fil fra disk:', e);
     }
 
+    // 5. Opdater server cache så den har isSavedLocally: false
+    const currentCached = getServerCache();
+    safeSetServerCache(currentCached.map(d => d.id === id ? { ...d, isSavedLocally: false } : d));
+
+    // 6. Informer serveren (dokumentet forbliver 100% intakt på serveren!)
     try {
       await fetch(`${getServerUrl()}/api/docs`, {
         method: 'POST',
@@ -846,6 +940,7 @@ export const deleteDocument = async (id, title = null) => {
 
     localStorage.removeItem(`word_doc_versions_${id}`);
     removeFromSyncQueue(id);
+    markDocumentLocallySaved(id, false);
     const local = getLocalDocs().filter(d => d.id !== id);
     setLocalDocs(local);
 

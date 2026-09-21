@@ -259,7 +259,7 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
         if (dir) setLocalDocsDirPath(dir);
       });
 
-      // Auto-importer eventuelle .docx filer fra mappen på disken
+      // Auto-importer eventuelle ukendte .docx filer fra mappen på disken
       try {
         const diskFiles = await listDiskDocuments();
         if (Array.isArray(diskFiles) && diskFiles.length > 0) {
@@ -267,8 +267,20 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
           for (const df of diskFiles) {
             const cleanTitle = df.baseName || df.name.replace(/\.[^/.]+$/, '');
             const isRecentlyDeleted = isTitleRecentlyDeleted(cleanTitle);
-            const alreadyExists = (docs || []).some(d => !d.inTrash && d.title.toLowerCase().trim() === cleanTitle.toLowerCase().trim());
-            if (!alreadyExists && !isRecentlyDeleted && df.ext === '.docx' && electron?.ipcRenderer?.invoke) {
+            const normalizeTitle = (t: string) => (t || '').normalize('NFC').toLowerCase().replace(/[\s\-_]+/g, '').trim();
+            const matchingDoc = (docs || []).find(d => !d.inTrash && (
+              normalizeTitle(d.title) === normalizeTitle(cleanTitle) ||
+              d.title.toLowerCase().trim() === cleanTitle.toLowerCase().trim()
+            ));
+
+            // Hvis filen matcher et eksisterende server-dokument, men brugeren har fravalgt lokal lagring:
+            if (matchingDoc && !matchingDoc.isSavedLocally && matchingDoc.syncStatus !== 'pending_upload') {
+              // Dette er en overskydende lokal fil på disken; ryd op så den ikke spøger
+              deleteDocumentFromDisk(cleanTitle, df.path).catch(() => {});
+              continue;
+            }
+
+            if (!matchingDoc && !isRecentlyDeleted && df.ext === '.docx' && electron?.ipcRenderer?.invoke) {
               try {
                 const readRes = await electron.ipcRenderer.invoke('read-local-file', df.path);
                 if (readRes?.success && readRes.data) {
@@ -377,9 +389,9 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
       if (updated) {
         setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, isSavedLocally: updated.isSavedLocally } : d));
         if (updated.isSavedLocally) {
-          showToast(`"${doc.title}" er nu gemt lokalt på computeren (offline-adgang).`, 'success');
+          showToast(`"${doc.title}" er nu gemt lokalt på denne computer (offline-adgang).`, 'success');
         } else {
-          showToast(`"${doc.title}" er fjernet fra lokale filer.`);
+          showToast(`"${doc.title}" er fjernet fra computeren (ligger fortsat sikkert på serveren).`, 'info');
         }
       }
     } catch (err) {
@@ -960,21 +972,50 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
               {isInTrash ? `Slettet ${formatDate(doc.deletedAt)}` : formatDate(doc.updatedAt)}
             </span>
 
-            {/* Énkelt status-ikon uden tekst */}
+            {/* Hurtig-ikon/knap til lokal hentning eller fjernelse */}
             {!isInTrash && (
               doc.syncStatus === 'pending_upload' ? (
                 <span className={styles.docStorageIcon} title="Afventer synkronisering med serveren">
                   <RotateCw size={12} className={styles.spinningSyncIcon} color="#f59e0b" />
                 </span>
               ) : doc.isSavedLocally ? (
-                <span className={styles.docStorageIcon} title="Gemt lokalt på denne computer">
+                <button
+                  className={styles.docStorageBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleSaveLocally(doc);
+                  }}
+                  title="Gemt lokalt på computeren. Klik for at fjerne fra computeren (forbliver sikkert på serveren)"
+                >
                   <HardDrive size={12} color="#10b981" />
-                </span>
+                </button>
               ) : (
-                <span className={styles.docStorageIcon} title="Gemt på serveren (ikke på denne pc)">
+                <button
+                  className={styles.docStorageBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleSaveLocally(doc);
+                  }}
+                  title="Gemt på serveren. Klik for at hente en lokal kopi til computeren (offline-adgang)"
+                >
                   <Cloud size={12} color="#94a3b8" />
-                </span>
+                </button>
               )
+            )}
+
+            {/* Hurtigknap i Lokale filer fanen til at fjerne lokal kopi */}
+            {activeTab === 'local' && !isInTrash && (
+              <button
+                className={styles.removeLocalBadgeBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleSaveLocally(doc);
+                }}
+                title="Fjern fra denne computer (dokumentet forbliver 100% sikkert på serveren)"
+              >
+                <CloudOff size={11} color="#f87171" />
+                <span>Fjern fra PC</span>
+              </button>
             )}
 
             <button
@@ -2149,10 +2190,21 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
                     setContextMenu(null);
                     handleToggleSaveLocally(d);
                   }}
-                  title="Gem dokumentet lokalt på computeren så det altid er tilgængeligt offline"
+                  title={contextMenu.doc.isSavedLocally 
+                    ? "Sletter den lokale .docx fil fra computeren. Dokumentet forbliver 100% intakt på serveren." 
+                    : "Henter det fulde dokument ned på computeren til lynhurtig offline adgang."}
                 >
-                  <HardDrive size={14} color={contextMenu.doc.isSavedLocally ? "#10b981" : "#a0aec0"} />
-                  <span>{contextMenu.doc.isSavedLocally ? 'Fjern fra lokale filer' : 'Gem lokalt (Offline adgang)'}</span>
+                  {contextMenu.doc.isSavedLocally ? (
+                    <>
+                      <CloudOff size={14} color="#f59e0b" />
+                      <span>Fjern fra denne PC (behold på server)</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileDown size={14} color="#3b82f6" />
+                      <span>Hent til denne PC (Offline adgang)</span>
+                    </>
+                  )}
                 </button>
 
                 {/* Vis KUN knappen for dokumenter der faktisk er hentet ned / gemt lokalt */}

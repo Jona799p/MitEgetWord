@@ -62,45 +62,36 @@ function getDocumentsDir() {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    // Automatisk engangsmigrering fra den gamle OneDrive/Dokumenter-mappe hvis der findes eksisterende filer der
-    try {
-      let oldBaseDir = '';
+    // Engangsmigrering fra den gamle OneDrive-mappe (kører KUN én gang hvis flag ikke er sat)
+    const migrationMarker = path.join(dir, '.migration_done');
+    if (!fs.existsSync(migrationMarker)) {
       try {
-        oldBaseDir = app.getPath('documents');
-      } catch {
-        oldBaseDir = path.join(require('os').homedir(), 'Documents');
-      }
-      const oldDir = path.join(oldBaseDir, 'MitEgetWord');
-      if (fs.existsSync(oldDir) && path.resolve(oldDir) !== path.resolve(dir)) {
-        const oldFiles = fs.readdirSync(oldDir);
-        for (const f of oldFiles) {
-          if (f.toLowerCase().endsWith('.docx')) {
-            const oldTarget = path.join(oldDir, f);
-            const newTarget = path.join(dir, f);
-            if (!fs.existsSync(newTarget)) {
-              try {
-                fs.copyFileSync(oldTarget, newTarget);
-                console.log(`[Migration] Kopierede fil "${f}" fra OneDrive-mappe til lokal pc-mappe`);
-              } catch {}
+        let oldBaseDir = '';
+        try {
+          oldBaseDir = app.getPath('documents');
+        } catch {
+          oldBaseDir = path.join(require('os').homedir(), 'Documents');
+        }
+        const oldDir = path.join(oldBaseDir, 'MitEgetWord');
+        if (fs.existsSync(oldDir) && path.resolve(oldDir) !== path.resolve(dir)) {
+          const oldFiles = fs.readdirSync(oldDir);
+          for (const f of oldFiles) {
+            if (f.toLowerCase().endsWith('.docx')) {
+              const oldTarget = path.join(oldDir, f);
+              const newTarget = path.join(dir, f);
+              if (!fs.existsSync(newTarget)) {
+                try {
+                  fs.copyFileSync(oldTarget, newTarget);
+                  console.log(`[Migration] Engangskopierede "${f}" til lokal pc-mappe`);
+                } catch {}
+              }
             }
           }
         }
-      }
-    } catch (migErr) {
-      console.warn('Fejl ved tjek af gammel OneDrive-dokumentmappe:', migErr.message);
-    }
-
-    // Hvis dev mode har filer i ../documents, synkroniser dem over i den lokale mappe
-    const devDocs = path.resolve(__dirname, '..', 'documents');
-    if (fs.existsSync(devDocs)) {
-      const devFiles = fs.readdirSync(devDocs);
-      for (const f of devFiles) {
-        if (f.toLowerCase().endsWith('.docx')) {
-          const target = path.join(dir, f);
-          if (!fs.existsSync(target)) {
-            try { fs.copyFileSync(path.join(devDocs, f), target); } catch {}
-          }
-        }
+      } catch (migErr) {
+        console.warn('Fejl ved engangsmigrering:', migErr.message);
+      } finally {
+        try { fs.writeFileSync(migrationMarker, new Date().toISOString(), 'utf-8'); } catch {}
       }
     }
   } catch (err) {
@@ -166,29 +157,43 @@ ipcMain.handle('save-local-document', async (event, { id, title, content, oldTit
   }
 });
 
-ipcMain.handle('delete-local-document', async (event, { title }) => {
+ipcMain.handle('delete-local-document', async (event, { title, filePath }) => {
   try {
     const docDir = getDocumentsDir();
     const cleanTitle = sanitizeFilename(title || 'Dokument');
     const docxPath = path.join(docDir, `${cleanTitle}.docx`);
     const htmlPath = path.join(docDir, `${cleanTitle}.html`);
     let deleted = false;
+
+    // Hvis direkte filsti er givet
+    if (filePath && fs.existsSync(filePath)) {
+      try { fs.unlinkSync(filePath); deleted = true; } catch {}
+    }
+
     if (fs.existsSync(docxPath)) {
       try { fs.unlinkSync(docxPath); deleted = true; } catch {}
     }
     if (fs.existsSync(htmlPath)) {
       try { fs.unlinkSync(htmlPath); deleted = true; } catch {}
     }
-    // Tjek også case-insensitive filer i mappen
+
+    const normalizeStr = s => (s || '').normalize('NFC').toLowerCase().replace(/[\s\-_]+/g, '').trim();
+    const targetNorm = normalizeStr(cleanTitle);
+
+    // Tjek også alle filer i mappen (case-insensitive, unicode-normaliseret)
     if (fs.existsSync(docDir)) {
       const files = fs.readdirSync(docDir);
       for (const f of files) {
-        const base = path.basename(f, path.extname(f));
-        if (base.toLowerCase().trim() === cleanTitle.toLowerCase().trim()) {
-          try { fs.unlinkSync(path.join(docDir, f)); deleted = true; } catch {}
+        const ext = path.extname(f).toLowerCase();
+        if (ext === '.docx' || ext === '.html' || ext === '.htm') {
+          const base = path.basename(f, ext);
+          if (normalizeStr(base) === targetNorm || base.toLowerCase().trim() === cleanTitle.toLowerCase().trim()) {
+            try { fs.unlinkSync(path.join(docDir, f)); deleted = true; } catch {}
+          }
         }
       }
     }
+
     // Rens også fra gammel OneDrive-mappe hvis filen stadig ligger der
     try {
       let oldBaseDir = '';
@@ -197,14 +202,31 @@ ipcMain.handle('delete-local-document', async (event, { title }) => {
       if (fs.existsSync(oldDir)) {
         const oldFiles = fs.readdirSync(oldDir);
         for (const f of oldFiles) {
-          const base = path.basename(f, path.extname(f));
-          if (base.toLowerCase().trim() === cleanTitle.toLowerCase().trim()) {
+          const ext = path.extname(f).toLowerCase();
+          const base = path.basename(f, ext);
+          if (normalizeStr(base) === targetNorm || base.toLowerCase().trim() === cleanTitle.toLowerCase().trim()) {
             try { fs.unlinkSync(path.join(oldDir, f)); } catch {}
           }
         }
       }
     } catch {}
-    console.log(`[LocalDocs] Dokument slettet lokalt fra disk: ${docxPath}`);
+
+    // Rens også fra dev mode /documents hvis den findes der så den ikke re-importeres
+    try {
+      const devDocs = path.resolve(__dirname, '..', 'documents');
+      if (fs.existsSync(devDocs)) {
+        const devFiles = fs.readdirSync(devDocs);
+        for (const f of devFiles) {
+          const ext = path.extname(f).toLowerCase();
+          const base = path.basename(f, ext);
+          if (normalizeStr(base) === targetNorm || base.toLowerCase().trim() === cleanTitle.toLowerCase().trim()) {
+            try { fs.unlinkSync(path.join(devDocs, f)); } catch {}
+          }
+        }
+      }
+    } catch {}
+
+    console.log(`[LocalDocs] Dokument slettet lokalt fra disk: ${cleanTitle} (slettet: ${deleted})`);
     return { success: true, deleted, path: docxPath };
   } catch (err) {
     console.error('IPC delete-local-document fejl:', err);
