@@ -47,10 +47,10 @@ export const getLocallySavedIds = () => {
     }
   } catch {}
 
-  // Første kørsel: Initialiser fra lokale dokumenter
+  // Første kørsel: Initialiser fra lokale dokumenter KUN hvis eksplicit markeret
   const local = getLocalDocs();
   inMemoryLocallySavedIds = new Set(
-    local.filter(d => !d.inTrash && (d.isSavedLocally || d.syncStatus === 'pending_upload')).map(d => d.id)
+    local.filter(d => !d.inTrash && (d.isSavedLocally === true || d.syncStatus === 'pending_upload')).map(d => d.id)
   );
   try {
     localStorage.setItem(LOCAL_SAVED_IDS_KEY, JSON.stringify(Array.from(inMemoryLocallySavedIds)));
@@ -73,6 +73,11 @@ export const markDocumentLocallySaved = (id, isSaved) => {
     ids.delete(id);
   }
   setLocallySavedIds(ids);
+};
+
+export const isDocumentSavedLocally = (id) => {
+  if (!id) return false;
+  return getLocallySavedIds().has(id);
 };
 
 export const safeSetServerCache = (docs) => {
@@ -324,8 +329,8 @@ export const getDocuments = async (options = {}) => {
 
     const merged = serverDocs.map(serverDoc => {
       const localDoc = localMap.get(serverDoc.id);
-      // Hvorvidt dokumentet er gemt lokalt bestemmes af denne pc's lokale ID-liste
-      const isSavedLocallyOnThisPc = localSavedIds.has(serverDoc.id) || (localDoc ? !!localDoc.isSavedLocally : false);
+      // Hvorvidt dokumentet er gemt lokalt bestemmes UDELUKKENDE af denne pc's lokale ID-liste
+      const isSavedLocallyOnThisPc = localSavedIds.has(serverDoc.id);
 
       if (localDoc) {
         localMap.delete(serverDoc.id);
@@ -357,7 +362,7 @@ export const getDocuments = async (options = {}) => {
     }
 
     // Opdater den lokale backup KUN for dokumenter der er gemt lokalt på denne pc
-    const updatedLocals = merged.filter(d => !d.inTrash && (localSavedIds.has(d.id) || !!d.isSavedLocally || d.syncStatus === 'pending_upload'));
+    const updatedLocals = merged.filter(d => !d.inTrash && (localSavedIds.has(d.id) || d.syncStatus === 'pending_upload'));
     setLocalDocs(updatedLocals);
 
     return merged;
@@ -373,7 +378,7 @@ export const getDocuments = async (options = {}) => {
   cachedDocs.forEach(d => {
     mergedOfflineMap.set(d.id, {
       ...d,
-      isSavedLocally: localSavedIds.has(d.id) || !!d.isSavedLocally
+      isSavedLocally: localSavedIds.has(d.id)
     });
   });
   localDocs.forEach(d => mergedOfflineMap.set(d.id, d));
@@ -384,7 +389,7 @@ export const getDocuments = async (options = {}) => {
 export const getDocument = async (id) => {
   const localDocs = getLocalDocs();
   const localDoc = localDocs.find(d => d.id === id);
-  const isLocalOnPc = getLocallySavedIds().has(id) || (localDoc ? !!localDoc.isSavedLocally : false);
+  const isLocalOnPc = getLocallySavedIds().has(id);
 
   try {
     const res = await fetch(`${getServerUrl()}/api/docs/${id}`, { signal: AbortSignal.timeout(3000) });
@@ -567,7 +572,11 @@ export const saveDocument = async (id, title, content, thumbnail, isFavorite, fo
   const existingIndex = localDocs.findIndex(d => d.id === id);
 
   const localIds = getLocallySavedIds();
-  const docIsSavedLocally = isSavedLocally !== undefined ? isSavedLocally : (localIds.has(id) || (existing.isSavedLocally ?? false));
+  // Dokumentet er KUN gemt offline/lokalt hvis eksplicit angivet som parameter eller hvis ID findes i denne PC's lokale ID-liste.
+  // Serverens cache må ALDRIG tvinge lokal gemning på en PC!
+  const docIsSavedLocally = isSavedLocally !== undefined
+    ? Boolean(isSavedLocally)
+    : (localIds.has(id) || (existingLocal ? !!existingLocal.isSavedLocally : false));
   markDocumentLocallySaved(id, docIsSavedLocally);
 
   // Bevar altid eksisterende værdier hvis intet specifikt sendes (undefined)
@@ -594,8 +603,15 @@ export const saveDocument = async (id, title, content, thumbnail, isFavorite, fo
     updatedAt: new Date().toISOString()
   };
 
-  // Gem altid straks i in-memory cache og lokalt hvis relevant så data aldrig mistes
-  if (docIsSavedLocally || existingIndex >= 0) {
+  // Opdater hurtigt in-memory server cache
+  const nextCached = cachedDocs.some(d => d.id === id)
+    ? cachedDocs.map(d => d.id === id ? { ...d, ...docToSave } : d)
+    : [docToSave, ...cachedDocs];
+  safeSetServerCache(nextCached);
+
+  // Håndter lokal offline-lagring på computeren:
+  if (docIsSavedLocally) {
+    // Dokumentet ER gemt offline: opdater lokale dokumenter i localStorage
     const nextLocals = [...localDocs];
     if (existingIndex >= 0) {
       nextLocals[existingIndex] = docToSave;
@@ -603,20 +619,26 @@ export const saveDocument = async (id, title, content, thumbnail, isFavorite, fo
       nextLocals.unshift(docToSave);
     }
     setLocalDocs(nextLocals);
+
+    // Gem det også fysisk på denne computers disk som en ægte .docx fil
+    if (!docToSave.inTrash) {
+      saveDocumentLocallyToDisk(docToSave, existing.title).catch(err => {
+        console.warn('Fejl ved skrivning af lokal fil til disk:', err);
+      });
+    }
+  } else {
+    // Dokumentet er IKKE gemt offline:
+    // 1. Fjern fra localDocs hvis det ikke afventer upload
+    if (existingIndex >= 0 && existingLocal?.syncStatus !== 'pending_upload') {
+      const nextLocals = localDocs.filter(d => d.id !== id);
+      setLocalDocs(nextLocals);
+    }
+    // 2. Sørg for at der IKKE ligger en overskydende lokal .docx fil på denne computers disk
+    deleteDocumentFromDisk(docToSave.title || existing.title).catch(() => {});
   }
 
-  // Opdater hurtigt in-memory server cache
-  const nextCached = cachedDocs.some(d => d.id === id)
-    ? cachedDocs.map(d => d.id === id ? { ...d, ...docToSave } : d)
-    : [docToSave, ...cachedDocs];
-  safeSetServerCache(nextCached);
-
-  // Hvis dokumentet er gemt lokalt, gem det fysisk på computerens disk som en ægte .docx fil
-  if (docIsSavedLocally && !docToSave.inTrash) {
-    saveDocumentLocallyToDisk(docToSave, existing.title).catch(err => {
-      console.warn('Fejl ved skrivning af lokal fil til disk:', err);
-    });
-  } else if (docToSave.inTrash && existing.isSavedLocally) {
+  // Hvis i papirkurv og var gemt lokalt: slet lokal fil
+  if (docToSave.inTrash) {
     deleteDocumentFromDisk(docToSave.title || existing.title).catch(() => {});
   }
 

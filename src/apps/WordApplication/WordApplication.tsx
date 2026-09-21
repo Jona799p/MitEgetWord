@@ -31,7 +31,7 @@ import CollapsibleHeadingExtension from './CollapsibleHeadingExtension';
 import FindReplaceDialog from './FindReplaceDialog';
 import DocumentStatsModal from './DocumentStatsModal';
 import VersionHistoryModal, { DocumentVersion } from './VersionHistoryModal';
-import { saveDocument, createDocument, createVersionSnapshot } from '../../store/documentStore';
+import { saveDocument, createDocument, createVersionSnapshot, isDocumentSavedLocally } from '../../store/documentStore';
 import { printDocument, exportToWord, exportToHtml, exportToText, exportToPdfFromHtml } from './exportUtils';
 import PrintPreviewModal from './PrintPreviewModal';
 import { parseLocalFile } from './localFileUtils';
@@ -58,6 +58,7 @@ export interface WordApplicationProps {
   docTitle?: string;
   fileData?: string | null;
   folderId?: string | null;
+  isSavedLocally?: boolean;
   onSave?: (data: string, title?: string) => Promise<void> | void;
   onTitleChange?: (newTitle: string) => void;
 }
@@ -128,6 +129,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
   docTitle = 'Navnløst dokument',
   fileData,
   folderId = null,
+  isSavedLocally: propIsSavedLocally,
   onSave,
   onTitleChange,
 }) => {
@@ -159,6 +161,20 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [currentDocId, setCurrentDocId] = useState(docId || '');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(folderId || null);
+  const [isSavedLocallyState, setIsSavedLocallyState] = useState<boolean>(() => {
+    if (propIsSavedLocally !== undefined) return propIsSavedLocally;
+    if (docId) return isDocumentSavedLocally(docId);
+    return false;
+  });
+
+  useEffect(() => {
+    if (propIsSavedLocally !== undefined) {
+      setIsSavedLocallyState(propIsSavedLocally);
+    } else if (currentDocId) {
+      setIsSavedLocallyState(isDocumentSavedLocally(currentDocId));
+    }
+  }, [propIsSavedLocally, currentDocId]);
+
   const [title, setTitle] = useState(docTitle);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -1415,7 +1431,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       let activeId = currentDocId;
       if (!activeId) {
         // Document didn't have an ID yet, create one on the server!
-        const created = await createDocument(currentTitle, content, currentFolderId);
+        const created = await createDocument(currentTitle, content, currentFolderId, [], null, isSavedLocallyState);
         if (created && created.id) {
           activeId = created.id;
           setCurrentDocId(created.id);
@@ -1423,11 +1439,11 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
             setCurrentFolderId(created.folderId);
           }
           if (thumbnail) {
-            await saveDocument(activeId, currentTitle, content, thumbnail, undefined, created.folderId !== undefined ? created.folderId : currentFolderId);
+            await saveDocument(activeId, currentTitle, content, thumbnail, undefined, created.folderId !== undefined ? created.folderId : currentFolderId, undefined, undefined, undefined, undefined, isSavedLocallyState);
           }
         }
       } else {
-        await saveDocument(activeId, currentTitle, content, thumbnail, undefined, currentFolderId);
+        await saveDocument(activeId, currentTitle, content, thumbnail, undefined, currentFolderId, undefined, undefined, undefined, undefined, isSavedLocallyState);
       }
       if (onSave) {
         await onSave(content, currentTitle);
@@ -1468,7 +1484,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       console.error('Fejl ved gem:', err);
       setSaveStatus('error');
     }
-  }, [editor, currentDocId, title, onSave, currentFolderId]);
+  }, [editor, currentDocId, title, onSave, currentFolderId, isSavedLocallyState]);
 
   const handleRestoreVersion = useCallback((version: DocumentVersion) => {
     if (!editor) return;
@@ -2385,8 +2401,9 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       if (!isActive) return;
 
       // Save: Ctrl + S (forces fresh thumbnail)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      if ((e.ctrlKey || e.metaKey) && (e.key?.toLowerCase() === 's' || e.code === 'KeyS')) {
         e.preventDefault();
+        e.stopPropagation();
         handleSave(undefined, true);
         return;
       }
@@ -2492,9 +2509,17 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    const handleGlobalSave = () => {
+      if (isActive) {
+        handleSave(undefined, true);
+      }
+    };
+
+    window.addEventListener('os:save-document', handleGlobalSave);
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('os:save-document', handleGlobalSave);
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }

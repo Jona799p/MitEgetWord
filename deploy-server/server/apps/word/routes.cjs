@@ -440,7 +440,7 @@ router.get('/docs', (req, res) => {
       inTrash: d.inTrash,
       deletedAt: d.deletedAt,
       updatedAt: d.updatedAt,
-      isSavedLocally: d.isSavedLocally,
+      isSavedLocally: false,
       content: ''
     }));
     return res.json(metaList);
@@ -517,7 +517,7 @@ router.post('/docs', (req, res) => {
     color: color !== undefined ? color : (existingDoc.color || null),
     inTrash: inTrash !== undefined ? inTrash : (existingDoc.inTrash || false),
     deletedAt: deletedAt !== undefined ? deletedAt : (existingDoc.deletedAt || null),
-    isSavedLocally: isSavedLocally !== undefined ? isSavedLocally : (existingDoc.isSavedLocally ?? false),
+    isSavedLocally: false,
     updatedAt: new Date().toISOString()
   };
 

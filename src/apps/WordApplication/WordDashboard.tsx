@@ -457,7 +457,8 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
         id: `doc-${Date.now()}`,
         title: 'Nyt dokument',
         content: '<p></p>',
-        folderId: currentFolderId
+        folderId: currentFolderId,
+        isSavedLocally: false
       });
     }
   };

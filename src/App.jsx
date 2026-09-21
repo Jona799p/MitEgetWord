@@ -79,18 +79,26 @@ function App() {
       setIsSettingsOpen(true);
     };
     const handleKeyDown = (e) => {
+      // Global shortcut: Ctrl + S / Cmd + S (Forhindr ALTID browserens download/gem webside-dialog)
+      if ((e.ctrlKey || e.metaKey) && (e.key?.toLowerCase() === 's' || e.code === 'KeyS')) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('os:save-document'));
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
         setIsSettingsOpen(prev => !prev);
+        return;
       }
     };
 
     window.addEventListener('openSettings', handleOpenSettingsEvent);
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
 
     return () => {
       window.removeEventListener('openSettings', handleOpenSettingsEvent);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
     };
   }, []);
 
@@ -475,7 +483,8 @@ function App() {
             docId: doc.id,
             title: doc.title,
             fileData: doc.content,
-            folderId: doc.folderId || null
+            folderId: doc.folderId || null,
+            isSavedLocally: Boolean(doc.isSavedLocally)
           });
         }
       } catch (err) {
@@ -503,7 +512,8 @@ function App() {
               docId: doc.id,
               title: doc.title,
               fileData: doc.content,
-              folderId: doc.folderId || null
+              folderId: doc.folderId || null,
+              isSavedLocally: Boolean(doc.isSavedLocally)
             })}
           />
         );
@@ -521,6 +531,7 @@ function App() {
               docTitle={view.title}
               fileData={view.fileData || null}
               folderId={view.folderId || null}
+              isSavedLocally={view.isSavedLocally}
               onTitleChange={(newTitle) => {
                 setPanels(prev => prev.map(p => {
                   if (p.id === panelId) {

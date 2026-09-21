@@ -15,6 +15,7 @@ declare module '*/store/documentStore' {
   export const saveDocumentLocallyToDisk: any;
   export const listDiskDocuments: any;
   export const resolveLocalDocumentsDirAsync: any;
+  export const isDocumentSavedLocally: any;
 }
 
 declare module '*/store/settingsStore' {
