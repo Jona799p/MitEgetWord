@@ -9,6 +9,7 @@ import { WordApplication, WordDashboard } from './apps/WordApplication';
 import { ImTApplication, setImTOpen } from './apps/ImTApplication';
 import { getDocument } from './store/documentStore';
 import { getSettings, applyTheme } from './store/settingsStore';
+import { whisperService } from './services/whisperService';
 import './App.css'; 
 
 class ErrorBoundary extends React.Component {
@@ -78,6 +79,15 @@ function App() {
       }
       setIsSettingsOpen(true);
     };
+    let altGrDown = false;
+    let altGrCombo = false;
+    let altGrStartTime = 0;
+    let altGrHoldTimer = null;
+
+    const isAltGrEvent = (e) => {
+      return e.code === 'AltRight' || e.key === 'AltGraph';
+    };
+
     const handleKeyDown = (e) => {
       // Global shortcut: Ctrl + S / Cmd + S (Forhindr ALTID browserens download/gem webside-dialog)
       if ((e.ctrlKey || e.metaKey) && (e.key?.toLowerCase() === 's' || e.code === 'KeyS')) {
@@ -91,14 +101,76 @@ function App() {
         setIsSettingsOpen(prev => !prev);
         return;
       }
+
+      // AltGr tast håndtering til tale-til-tekst
+      if (isAltGrEvent(e)) {
+        if (!altGrDown) {
+          altGrDown = true;
+          altGrCombo = false;
+          altGrStartTime = Date.now();
+
+          const currentState = whisperService.getState();
+          if (currentState.isRecording) {
+            whisperService.stopRecording();
+            altGrCombo = true;
+          } else {
+            if (altGrHoldTimer) clearTimeout(altGrHoldTimer);
+            altGrHoldTimer = setTimeout(() => {
+              if (altGrDown && !altGrCombo) {
+                whisperService.startRecording();
+              }
+            }, 220);
+          }
+        }
+        return;
+      }
+
+      // Hvis der trykkes på en anden tast mens AltGr holdes nede (f.eks. @, €, {, }, [, ], |, \)
+      if (altGrDown) {
+        altGrCombo = true;
+        if (altGrHoldTimer) {
+          clearTimeout(altGrHoldTimer);
+          altGrHoldTimer = null;
+        }
+        const currentState = whisperService.getState();
+        if (currentState.isRecording && (Date.now() - altGrStartTime) < 400) {
+          whisperService.cancelRecording();
+        }
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (isAltGrEvent(e)) {
+        altGrDown = false;
+        if (altGrHoldTimer) {
+          clearTimeout(altGrHoldTimer);
+          altGrHoldTimer = null;
+        }
+
+        if (altGrCombo) {
+          altGrCombo = false;
+          return;
+        }
+
+        const elapsed = Date.now() - altGrStartTime;
+        const currentState = whisperService.getState();
+
+        if (currentState.isRecording) {
+          whisperService.stopRecording();
+        } else if (elapsed < 250 && !currentState.isTranscribing) {
+          whisperService.startRecording();
+        }
+      }
     };
 
     window.addEventListener('openSettings', handleOpenSettingsEvent);
     window.addEventListener('keydown', handleKeyDown, { capture: true });
+    window.addEventListener('keyup', handleKeyUp, { capture: true });
 
     return () => {
       window.removeEventListener('openSettings', handleOpenSettingsEvent);
       window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      window.removeEventListener('keyup', handleKeyUp, { capture: true });
     };
   }, []);
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -332,6 +332,52 @@ ipcMain.handle('open-file-in-system', async (event, targetPath) => {
   }
 });
 
+// ----------------------------------------------------
+// Whisper Tale-til-tekst IPC Handler
+// ----------------------------------------------------
+ipcMain.handle('transcribe-audio', async (event, { audioBuffer, mimeType, apiUrl, apiKey, model, language, prompt }) => {
+  try {
+    const targetUrl = (apiUrl || 'http://100.67.46.116:8000/v1/audio/transcriptions').trim();
+    const form = new FormData();
+    const buf = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
+    const type = mimeType || 'audio/webm';
+    let filename = 'voice.mp3';
+    if (type.includes('wav')) filename = 'voice.wav';
+    else if (type.includes('webm')) filename = 'voice.webm';
+    else if (type.includes('ogg')) filename = 'voice.ogg';
+
+    form.append('file', new Blob([buf], { type }), filename);
+    form.append('model', model || 'small');
+    form.append('language', language || 'da');
+    if (prompt) {
+      form.append('prompt', prompt);
+    }
+
+    const headers = {};
+    if (apiKey && apiKey.trim()) {
+      headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+    }
+
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers,
+      body: form
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return { success: false, error: `Whisper server svarede med status ${response.status}: ${errText}` };
+    }
+
+    const data = await response.json();
+    const text = (data.text || '').trim();
+    return { success: true, text };
+  } catch (err) {
+    console.error('[Whisper] Fejl under transskription:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 // Auto-update IPC handlers
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
@@ -617,6 +663,22 @@ async function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Tillad automatisk mikrofonadgang til tale-til-tekst (Whisper)
+  if (session && session.defaultSession) {
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      if (permission === 'media') {
+        return callback(true);
+      }
+      callback(false);
+    });
+    session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+      if (permission === 'media') {
+        return true;
+      }
+      return false;
+    });
+  }
+
   createWindow();
   cleanupOldHtmlFiles();
 

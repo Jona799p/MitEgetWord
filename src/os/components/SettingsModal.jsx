@@ -3,11 +3,11 @@ import {
   Palette, Bot, Server, Info, X, Check, Eye, EyeOff, 
   RefreshCw, Sliders, Sparkles, Sun, Moon, AlertCircle, 
   CheckCircle2, Key, HardDrive, RotateCcw, Terminal, Undo2, ArrowRight,
-  SpellCheck, Plus, BookOpen, ScanText
+  SpellCheck, Plus, BookOpen, ScanText, Mic
 } from 'lucide-react';
 import './SettingsModal.css';
 import { 
-  getSettings, saveSettings, applyTheme, testAIConnection, testLanguageToolConnection,
+  getSettings, saveSettings, applyTheme, testAIConnection, testLanguageToolConnection, testWhisperConnection,
   THEMES, ACCENT_COLORS, AI_PROVIDERS, DEFAULT_PROMPTS,
   addToCustomDictionary, removeFromCustomDictionary, syncServerAIConfig
 } from '../../store/settingsStore';
@@ -25,6 +25,7 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
   const [testStates, setTestStates] = useState({});
   const [serverTestState, setServerTestState] = useState(null);
   const [ltTestState, setLtTestState] = useState(null);
+  const [whisperTestState, setWhisperTestState] = useState(null);
   const [savedFeedback, setSavedFeedback] = useState(false);
   
   // Active selected provider sub-tab in AI settings
@@ -320,6 +321,16 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
     });
   };
 
+  const handleTestWhisper = async () => {
+    setWhisperTestState({ loading: true, message: 'Tester forbindelse til Faster Whisper...' });
+    const res = await testWhisperConnection(settings.whisperApiUrl, settings.whisperApiKey);
+    setWhisperTestState({
+      loading: false,
+      success: res.success,
+      message: res.message
+    });
+  };
+
   const handleResetSettings = () => {
     if (window.confirm('Er du sikker på, at du vil nulstille alle indstillinger til standard?')) {
       localStorage.removeItem('mitEgetWord_settings');
@@ -429,6 +440,15 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
               ) : (
                 <span className="settings-tab-badge">Fra</span>
               )}
+            </button>
+
+            <button 
+              className={`settings-tab-btn ${activeTab === 'whisper' ? 'active' : ''}`}
+              onClick={() => setActiveTab('whisper')}
+            >
+              <Mic size={16} />
+              <span>Tale til Tekst (Whisper)</span>
+              <span className="settings-tab-badge" style={{ color: '#38bdf8' }}>AltGr</span>
             </button>
 
             <button 
@@ -996,6 +1016,128 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
                       Sørg for at port 8010 er åben i din server-pc's firewall på lokalnetværket.
                     </span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* ================= TAB: TALE TIL TEKST (FASTER WHISPER) ================= */}
+            {activeTab === 'whisper' && (
+              <div className="settings-tab-pane">
+                <div className="settings-section">
+                  <div className="section-title-row">
+                    <div>
+                      <h4 className="settings-section-title">Faster Whisper Tale-til-Tekst (Diktering)</h4>
+                      <p className="settings-section-desc">
+                        Optag din stemme og få den transskriberet direkte til tekst ved din cursor i dokumentet via din Faster Whisper AI-server.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Genvejstast & Sikkerhedsinfo Card */}
+                  <div className="prompts-nav-callout" style={{ marginTop: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Mic size={16} color="#38bdf8" />
+                      <strong style={{ fontSize: 13, color: 'var(--text-primary, #ffffff)' }}>Tastatursikret optagelse med AltGr</strong>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary, #aaaaaa)', lineHeight: 1.6 }}>
+                      • Tryk <strong>AltGr</strong> for at starte optagelse, og tryk igen (eller slip hvis du holdt den nede) for at indsætte teksten hvor end din markør står.<br />
+                      • Du kan også bruge den visuelle mikrofonknap i AI-pillen forneden.<br />
+                      • <strong>Privatliv:</strong> Lydoptagelsen gemmes aldrig som en fil på din computer. Den behandles udelukkende i hukommelsen (RAM) og slettes straks efter afsendelse.<br />
+                      • <strong>Tastatursikret:</strong> Specialtegn som <code>@</code>, <code>€</code>, <code>{'{'}</code>, <code>{'}'}</code>, <code>[</code>, <code>]</code> virker uforstyrret som normalt.
+                    </span>
+                  </div>
+
+                  {/* Whisper API URL */}
+                  <div className="settings-group" style={{ marginTop: 18 }}>
+                    <label>Whisper API URL / Endepunkt</label>
+                    <input 
+                      type="text" 
+                      value={settings.whisperApiUrl || ''} 
+                      onChange={(e) => updateSetting('whisperApiUrl', e.target.value)}
+                      placeholder="http://100.67.46.116:8000/v1/audio/transcriptions"
+                    />
+                    <small>
+                      Den fulde URL til transskriptioner, f.eks. <code>http://100.67.46.116:8000/v1/audio/transcriptions</code>
+                    </small>
+                  </div>
+
+                  {/* Whisper API Key */}
+                  <div className="settings-group">
+                    <label>API Nøgle (Bearer Token)</label>
+                    <div className="settings-input-with-action">
+                      <input 
+                        type={showKeys['whisper'] ? 'text' : 'password'}
+                        value={settings.whisperApiKey || ''} 
+                        onChange={(e) => updateSetting('whisperApiKey', e.target.value)}
+                        placeholder="f.eks. min-hemmelige-api-noegle-123"
+                      />
+                      <button 
+                        type="button" 
+                        className="input-eye-btn"
+                        onClick={() => setShowKeys(prev => ({ ...prev, whisper: !prev.whisper }))}
+                        title={showKeys['whisper'] ? 'Skjul API nøgle' : 'Vis API nøgle'}
+                      >
+                        {showKeys['whisper'] ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                    <small>Autorisationsnøgle der sendes med i Authorization-headeren.</small>
+                  </div>
+                  {/* Whisper Model & Language */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+                    <div className="settings-group">
+                      <label>Model</label>
+                      <input 
+                        type="text" 
+                        value={settings.whisperModel || ''} 
+                        onChange={(e) => updateSetting('whisperModel', e.target.value)}
+                        placeholder="small"
+                      />
+                      <small>f.eks. <code>small</code>, <code>base</code>, <code>medium</code>, <code>large-v3</code></small>
+                    </div>
+
+                    <div className="settings-group">
+                      <label>Sprogkode</label>
+                      <input 
+                        type="text" 
+                        value={settings.whisperLanguage || ''} 
+                        onChange={(e) => updateSetting('whisperLanguage', e.target.value)}
+                        placeholder="da"
+                      />
+                      <small>f.eks. <code>da</code> for dansk eller <code>en</code> for engelsk</small>
+                    </div>
+                  </div>
+
+                  {/* Whisper Prompt */}
+                  <div className="settings-group" style={{ marginTop: 14 }}>
+                    <label>Initial Prompt (Vejledning til tegnsætning)</label>
+                    <textarea 
+                      rows={2}
+                      value={settings.whisperPrompt || ''} 
+                      onChange={(e) => updateSetting('whisperPrompt', e.target.value)}
+                      placeholder="Dette er en samtale på dansk. Her bruges komma, punktum og store bogstaver."
+                    />
+                    <small>Whisper bruger denne prompt til at guide modellens tegnsætning, store bogstaver og sprogtone.</small>
+                  </div>
+
+                  {/* Test Connection Button and Status */}
+                  <div className="provider-test-row" style={{ marginTop: 16 }}>
+                    <button 
+                      type="button" 
+                      className="test-btn" 
+                      disabled={whisperTestState?.loading || !settings.whisperApiUrl}
+                      onClick={handleTestWhisper}
+                    >
+                      {whisperTestState?.loading ? <RefreshCw size={14} className="spin" /> : <Mic size={14} />}
+                      <span>Test Forbindelse til Whisper</span>
+                    </button>
+                    {whisperTestState && (
+                      <div className={`test-result ${whisperTestState.success ? 'success' : 'error'}`}>
+                        {whisperTestState.success ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                        <span>{whisperTestState.message}</span>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               </div>
             )}

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getSettings, callAI, DEFAULT_PROMPTS, syncServerAIConfig } from '../../store/settingsStore';
 import { getDocuments, createDocument } from '../../store/documentStore';
-import { Sparkles, ArrowUp, X, Check, Loader2, FileText, CheckCheck, Wand2, BookOpen, AlertCircle } from 'lucide-react';
+import { whisperService } from '../../services/whisperService';
+import { Sparkles, ArrowUp, X, Check, Loader2, FileText, CheckCheck, Wand2, BookOpen, AlertCircle, Mic, Square } from 'lucide-react';
 import './AIPill.css';
 
 import { GEMINI_TOOL_SCHEMAS, OPENAI_TOOL_SCHEMAS, tiptapHtmlToMarkdown, textToTipTapHtml } from '../../DocumentEditor';
@@ -49,8 +50,38 @@ const AIPill = ({ isDashboard }) => {
   const [imtState, setImtState] = useState(() => getImTState());
   const [imtAttached, setImtAttached] = useState(false);
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
+  const [whisperState, setWhisperState] = useState(() => whisperService.getState());
   const inputRef = useRef(null);
   const pillRef = useRef(null);
+
+  useEffect(() => {
+    const unsubWhisper = whisperService.subscribe((st) => {
+      setWhisperState(st);
+      if (st.error) {
+        setActionError(st.error);
+        setTimeout(() => setActionError(null), 4500);
+      }
+    });
+
+    const handleSpeechComplete = (e) => {
+      const text = e.detail?.text;
+      if (text) {
+        setActionFeedback('Tale indsat ved markør');
+        setTimeout(() => setActionFeedback(null), 3500);
+        if (!window.__activeWordEditor) {
+          setInput(prev => prev ? `${prev} ${text}` : text);
+          setIsExpanded(true);
+        }
+      }
+    };
+
+    window.addEventListener('speech:transcription-complete', handleSpeechComplete);
+
+    return () => {
+      unsubWhisper();
+      window.removeEventListener('speech:transcription-complete', handleSpeechComplete);
+    };
+  }, []);
 
   useEffect(() => {
     // Hent altid den server-konfigurerede AI model ved opstart
@@ -139,6 +170,12 @@ const AIPill = ({ isDashboard }) => {
 
   const closePill = () => {
     setIsExpanded(false);
+  };
+
+  const handleMicClick = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    whisperService.toggleRecording();
   };
 
   // Direkte lynhurtig overførsel fra ImT til dokumentet (0s ventetid, 0 tokens)
@@ -851,8 +888,30 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
         </div>
       )}
 
-      {/* Handling status badge (f.eks. ved dokumentredigering) */}
-      {isExpanded && actionFeedback && (
+      {/* Tale-til-tekst Lytte / Behandler status banner */}
+      {whisperState.isRecording && (
+        <div className="ai-speech-status-banner">
+          <span className="ai-speech-dot" />
+          <span className="ai-speech-text">Lytter efter stemme... {whisperState.duration > 0 ? `${whisperState.duration}s` : ''}</span>
+          <div className="ai-speech-waves">
+            <span className="ai-speech-wave-bar" />
+            <span className="ai-speech-wave-bar" />
+            <span className="ai-speech-wave-bar" />
+            <span className="ai-speech-wave-bar" />
+          </div>
+          <span className="ai-speech-hint">(Tryk AltGr eller klik for at afslutte)</span>
+        </div>
+      )}
+
+      {whisperState.isTranscribing && (
+        <div className="ai-speech-status-banner transcribing">
+          <Loader2 size={14} className="ai-spin" />
+          <span className="ai-speech-text">Transskriberer via Faster Whisper...</span>
+        </div>
+      )}
+
+      {/* Handling status badge (f.eks. ved dokumentredigering eller tale) */}
+      {actionFeedback && (
         <div className="ai-action-badge">
           <Check size={13} color="#22c55e" />
           <span>{actionFeedback}</span>
@@ -860,7 +919,7 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
       )}
 
       {/* Fejlstatus badge hvis noget gik galt */}
-      {isExpanded && actionError && (
+      {actionError && (
         <div className="ai-error-badge">
           <AlertCircle size={13} color="#f87171" />
           <span>{actionError}</span>
@@ -938,7 +997,7 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
       )}
 
       {/* Input Pille */}
-      <div className={`ai-pill ${isLoading ? 'working' : ''}`}>
+      <div className={`ai-pill ${isLoading ? 'working' : ''} ${whisperState.isRecording ? 'listening' : ''}`}>
         {isLoading && <div className="ai-working-bar" />}
 
         <button 
@@ -953,6 +1012,24 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
         >
           <Sparkles size={17} className={`ai-icon-svg ${isLoading ? 'working' : ''}`} />
         </button>
+
+        {!isExpanded && (
+          <button
+            type="button"
+            className={`ai-mic-btn ${whisperState.isRecording ? 'recording' : ''} ${whisperState.isTranscribing ? 'transcribing' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleMicClick}
+            title={whisperState.isRecording ? 'Stopper og transskriberer (AltGr)' : 'Tale til tekst (AltGr)'}
+          >
+            {whisperState.isTranscribing ? (
+              <Loader2 size={16} className="ai-spin" />
+            ) : whisperState.isRecording ? (
+              <Square size={13} fill="#ef4444" color="#ef4444" />
+            ) : (
+              <Mic size={16} />
+            )}
+          </button>
+        )}
         
         {isExpanded && (
           <>
@@ -1012,6 +1089,22 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
               </span>
             </button>
             
+            <button
+              type="button"
+              className={`ai-mic-btn ${whisperState.isRecording ? 'recording' : ''} ${whisperState.isTranscribing ? 'transcribing' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleMicClick}
+              title={whisperState.isRecording ? 'Stopper og transskriberer tale (AltGr)' : 'Tale til tekst (AltGr)'}
+            >
+              {whisperState.isTranscribing ? (
+                <Loader2 size={16} className="ai-spin" />
+              ) : whisperState.isRecording ? (
+                <Square size={13} fill="#ef4444" color="#ef4444" />
+              ) : (
+                <Mic size={16} />
+              )}
+            </button>
+
             <button 
               type="button"
               className={`ai-send-btn ${input.trim() ? 'active' : ''} ${isLoading ? 'loading' : ''}`} 

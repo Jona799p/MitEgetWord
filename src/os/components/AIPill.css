@@ -378,6 +378,151 @@
   line-height: 22px;
   padding: 10px 4px;
   max-height: 150px;
+/* ==========================================================================
+   Microphone Button & Speech Recording Status (Whisper)
+   ========================================================================== */
+.ai-pill-container:not(.expanded) .ai-pill {
+  width: 98px;
+  padding: 0 6px;
+  gap: 4px;
+}
+
+.ai-mic-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-pill-container:not(.expanded) .ai-mic-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.ai-mic-btn:hover {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  transform: scale(1.05);
+}
+
+.ai-mic-btn.recording {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.22);
+  animation: aiMicPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.55);
+}
+
+.ai-mic-btn.transcribing {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.18);
+}
+
+@keyframes aiMicPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+  }
+}
+
+/* Listening & Transcribing Status Banner */
+.ai-speech-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  background: rgba(28, 16, 18, 0.96);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fecaca;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 6px 22px rgba(239, 68, 68, 0.28);
+  animation: aiSlideUp 0.2s ease-out;
+  backdrop-filter: blur(16px);
+  max-width: 680px;
+}
+
+.ai-speech-status-banner.transcribing {
+  background: rgba(22, 20, 32, 0.96);
+  border-color: rgba(167, 139, 250, 0.45);
+  color: #ddd6fe;
+  box-shadow: 0 6px 22px rgba(167, 139, 250, 0.28);
+}
+
+.ai-speech-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: aiDotBlink 1s infinite alternate;
+}
+
+@keyframes aiDotBlink {
+  0% { opacity: 0.4; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+.ai-speech-waves {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 14px;
+}
+
+.ai-speech-wave-bar {
+  width: 3px;
+  height: 100%;
+  background: #f87171;
+  border-radius: 2px;
+  animation: aiWaveAnim 0.8s ease-in-out infinite alternate;
+}
+
+.ai-speech-wave-bar:nth-child(1) { animation-delay: 0.1s; height: 35%; }
+.ai-speech-wave-bar:nth-child(2) { animation-delay: 0.3s; height: 85%; }
+.ai-speech-wave-bar:nth-child(3) { animation-delay: 0.15s; height: 100%; }
+.ai-speech-wave-bar:nth-child(4) { animation-delay: 0.4s; height: 50%; }
+
+@keyframes aiWaveAnim {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+.ai-speech-text {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.ai-speech-hint {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-left: 4px;
+}
+
+.ai-pill.listening {
+  border-color: rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.22);
+}
+
   box-sizing: border-box;
   display: flex;
   align-items: center;

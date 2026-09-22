@@ -162,6 +162,13 @@ const DEFAULT_SETTINGS = {
   languageToolIgnoreCamelCase: true, // Ignorér CamelCase & akronymer (f.eks. MitEgetWord, QoL)
   customDictionary: [], // Liste over brugerens egne godkendte ord
 
+  // Faster Whisper (Tale-til-tekst / Lydfiler til stemme)
+  whisperApiUrl: 'http://100.67.46.116:8000/v1/audio/transcriptions',
+  whisperApiKey: 'min-hemmelige-api-noegle-123',
+  whisperModel: 'small',
+  whisperLanguage: 'da',
+  whisperPrompt: 'Dette er en samtale på dansk. Her bruges komma, punktum og store bogstaver.',
+
   // Prompts & Systeminstruktioner
   ...DEFAULT_PROMPTS
 };
@@ -371,6 +378,38 @@ export const testLanguageToolConnection = async (url, language = 'da-DK') => {
     };
   }
 };
+export const testWhisperConnection = async (url, apiKey) => {
+  try {
+    const targetUrl = (url || 'http://100.67.46.116:8000/v1/audio/transcriptions').trim();
+    const baseUrl = targetUrl.replace(/\/v1\/audio\/transcriptions\/?$/, '');
+    const headers = {};
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+
+    const res = await fetch(`${baseUrl}/v1/models`, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(4000)
+    }).catch(() => null);
+
+    if (res && (res.ok || res.status === 401 || res.status === 403)) {
+      return { success: true, message: 'Forbindelse til Whisper serveren oprettet!' };
+    }
+
+    const baseRes = await fetch(baseUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(4000)
+    }).catch(() => null);
+
+    if (baseRes) {
+      return { success: true, message: `Forbindelse til Whisper server fundet (status ${baseRes.status}). Klar til diktering!` };
+    }
+
+    return { success: false, message: 'Kunne ikke forbinde til serveren på den angivne adresse.' };
+  } catch (err) {
+    return { success: false, message: err.message || 'Kunne ikke forbinde til Whisper serveren' };
+  }
+};
+
 
 // Cache til hurtig tjek af LanguageTool tilgængelighed
 let lastLtHealthCheck = 0;
