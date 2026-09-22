@@ -31,7 +31,7 @@ import CollapsibleHeadingExtension from './CollapsibleHeadingExtension';
 import FindReplaceDialog from './FindReplaceDialog';
 import DocumentStatsModal from './DocumentStatsModal';
 import VersionHistoryModal, { DocumentVersion } from './VersionHistoryModal';
-import { saveDocument, createDocument, createVersionSnapshot, isDocumentSavedLocally } from '../../store/documentStore';
+import { saveDocument, createDocument, createVersionSnapshot, isDocumentSavedLocally, getDocument } from '../../store/documentStore';
 import { printDocument, exportToWord, exportToHtml, exportToText, exportToPdfFromHtml } from './exportUtils';
 import PrintPreviewModal from './PrintPreviewModal';
 import { parseLocalFile } from './localFileUtils';
@@ -929,6 +929,24 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       editor.commands.setContent(sanitized, { emitUpdate: false });
     }
   }, [fileData, editor]);
+
+  // Sikkerhedsnet: Hvis dokumentet er åbnet med docId, men fileData mangler eller var tomt metadata, hent det fulde indhold
+  useEffect(() => {
+    let isCancelled = false;
+    if (docId && (!fileData || fileData.trim() === '' || fileData === '<p></p>')) {
+      getDocument(docId).then(fullDoc => {
+        if (isCancelled || !fullDoc || !fullDoc.content || !editor) return;
+        if (!editor.isFocused && (editor.isEmpty || editor.getHTML() === '<p></p>')) {
+          const sanitized = sanitizeContent(fullDoc.content);
+          lastSelfSavedHtmlRef.current = fullDoc.content;
+          editor.commands.setContent(sanitized, { emitUpdate: false });
+        }
+      }).catch(err => {
+        console.warn('Defensiv indlæsning af dokument-indhold fejlede:', err);
+      });
+    }
+    return () => { isCancelled = true; };
+  }, [docId, fileData, editor]);
 
   // Håndter værktøjskald fra AI assistenten (Exact String Match & DocumentEditor)
   useEffect(() => {

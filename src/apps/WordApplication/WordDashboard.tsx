@@ -9,7 +9,7 @@ import {
   HardDrive, FolderOpen, CheckCircle2, CloudOff, Cloud
 } from 'lucide-react';
 import { 
-  getDocuments, createDocument, deleteDocument, 
+  getDocuments, getDocument, createDocument, deleteDocument, 
   renameDocument, toggleFavorite, checkServerStatus,
   getFolders, createFolder, renameFolder, deleteFolder, moveDocumentToFolder,
   duplicateDocument, moveToTrash, restoreDocument, emptyTrash, updateDocumentTags,
@@ -381,6 +381,22 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
       setIsLoading(false);
       if (e.target) e.target.value = '';
     }
+  };
+
+  const handleOpenDocSafely = async (doc: DocumentItem) => {
+    if (doc.inTrash) return;
+    let targetDoc = doc;
+    if (doc.id && (!doc.content || doc.content.trim() === '' || doc.content === '<p></p>')) {
+      try {
+        const fullDoc = await getDocument(doc.id);
+        if (fullDoc && fullDoc.content) {
+          targetDoc = fullDoc;
+        }
+      } catch (err) {
+        console.warn('Kunne ikke hente fuldt dokument i dashboard:', err);
+      }
+    }
+    onOpenDocument(targetDoc);
   };
 
   const handleToggleSaveLocally = async (doc: DocumentItem) => {
@@ -881,8 +897,7 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
         key={keyPrefix ? `${keyPrefix}-${doc.id}` : doc.id} 
         className={`${styles.docCard} ${isDragging ? styles.isDragging : ''} ${isInTrash ? styles.docCardInTrash : ''}`}
         onClick={() => {
-          if (isInTrash) return;
-          onOpenDocument(doc);
+          handleOpenDocSafely(doc);
         }}
         onContextMenu={(e) => handleDocContextMenu(e, doc)}
         style={{
@@ -2177,7 +2192,7 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
                   onClick={() => {
                     const d = contextMenu.doc;
                     setContextMenu(null);
-                    onOpenDocument(d);
+                    handleOpenDocSafely(d);
                   }}
                 >
                   <ExternalLink size={14} color="#4a90e2" />

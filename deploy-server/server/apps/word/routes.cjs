@@ -309,16 +309,22 @@ if (!fs.existsSync(VERSIONS_FILE)) {
   fs.writeFileSync(VERSIONS_FILE, JSON.stringify([]));
 }
 
-let inMemoryVersions = null;
-const readVersions = () => {
+const readSafeJson = (filePath, fallback = []) => {
   try {
-    const data = fs.readFileSync(VERSIONS_FILE, 'utf8');
+    if (!fs.existsSync(filePath)) return fallback;
+    let data = fs.readFileSync(filePath, 'utf8');
+    if (data.charCodeAt(0) === 0xFEFF) {
+      data = data.slice(1);
+    }
     return JSON.parse(data);
   } catch (error) {
-    console.error('Fejl ved læsning af versioner:', error);
-    return [];
+    console.error(`Fejl ved læsning af ${filePath}:`, error);
+    return fallback;
   }
 };
+
+let inMemoryVersions = null;
+const readVersions = () => readSafeJson(VERSIONS_FILE, []);
 
 const writeVersions = (versions) => {
   inMemoryVersions = versions;
@@ -326,15 +332,7 @@ const writeVersions = (versions) => {
 };
 
 let inMemoryDocs = null;
-const readDocs = () => {
-  try {
-    const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Fejl ved læsning af dokumenter:', error);
-    return [];
-  }
-};
+const readDocs = () => readSafeJson(DATA_FILE, []);
 
 const writeDocs = (docs) => {
   inMemoryDocs = docs;
@@ -342,15 +340,7 @@ const writeDocs = (docs) => {
 };
 
 let inMemoryFolders = null;
-const readFolders = () => {
-  try {
-    const data = fs.readFileSync(FOLDERS_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Fejl ved læsning af mapper:', error);
-    return [];
-  }
-};
+const readFolders = () => readSafeJson(FOLDERS_FILE, []);
 
 const writeFolders = (folders) => {
   inMemoryFolders = folders;

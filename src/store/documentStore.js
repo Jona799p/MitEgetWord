@@ -392,7 +392,7 @@ export const getDocument = async (id) => {
   const isLocalOnPc = getLocallySavedIds().has(id);
 
   try {
-    const res = await fetch(`${getServerUrl()}/api/docs/${id}`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${getServerUrl()}/api/docs/${id}`, { signal: AbortSignal.timeout(20000) });
     if (res.ok) {
       const serverDoc = await res.json();
       if (localDoc && (localDoc.syncStatus === 'pending_upload')) {
@@ -408,15 +408,19 @@ export const getDocument = async (id) => {
     console.warn('Fejl ved hentning af dokument fra server, bruger lokal kopi:', error);
   }
 
-  if (localDoc) return { ...localDoc, isSavedLocally: isLocalOnPc };
+  if (localDoc && localDoc.content && localDoc.content.trim() !== '') {
+    return { ...localDoc, isSavedLocally: isLocalOnPc };
+  }
 
   try {
     const cachedDocs = JSON.parse(localStorage.getItem(SERVER_CACHE_KEY) || '[]');
     const cached = cachedDocs.find(d => d.id === id);
-    if (cached) return { ...cached, isSavedLocally: isLocalOnPc };
+    if (cached && cached.content && cached.content.trim() !== '') {
+      return { ...cached, isSavedLocally: isLocalOnPc };
+    }
   } catch {}
 
-  return null;
+  return localDoc || null;
 };
 
 const LOCAL_FOLDERS_KEY = 'mitEgetWord_local_folders';

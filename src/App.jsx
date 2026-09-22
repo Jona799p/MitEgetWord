@@ -507,14 +507,27 @@ function App() {
         return (
           <WordDashboard 
             panelId={panelId}
-            onOpenDocument={(doc) => handleOpenApp(panelId, {
-              type: 'word',
-              docId: doc.id,
-              title: doc.title,
-              fileData: doc.content,
-              folderId: doc.folderId || null,
-              isSavedLocally: Boolean(doc.isSavedLocally)
-            })}
+            onOpenDocument={async (doc) => {
+              let fullDoc = doc;
+              if (doc?.id && (!doc.content || doc.content.trim() === '' || doc.content === '<p></p>')) {
+                try {
+                  const fetched = await getDocument(doc.id);
+                  if (fetched && fetched.content) {
+                    fullDoc = fetched;
+                  }
+                } catch (err) {
+                  console.error('Kunne ikke hente fuldt dokument i onOpenDocument:', err);
+                }
+              }
+              handleOpenApp(panelId, {
+                type: 'word',
+                docId: fullDoc.id,
+                title: fullDoc.title,
+                fileData: fullDoc.content || null,
+                folderId: fullDoc.folderId || null,
+                isSavedLocally: Boolean(fullDoc.isSavedLocally)
+              });
+            }}
           />
         );
 
