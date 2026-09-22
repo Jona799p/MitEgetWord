@@ -48,6 +48,14 @@ const DEFAULT_CONFIG = {
       model: ''
     }
   },
+  whisper: {
+    name: 'Faster Whisper (Tale-til-Tekst)',
+    url: 'http://100.67.46.116:8000/v1/audio/transcriptions',
+    apiKey: 'min-hemmelige-api-noegle-123',
+    model: 'small',
+    language: 'da',
+    prompt: 'Dette er en samtale på dansk. Her bruges komma, punktum og store bogstaver.'
+  },
   languagetool: {
     url: 'http://127.0.0.1:8010/v2',
     language: 'da-DK'
@@ -65,6 +73,10 @@ function loadConfig() {
         providers: {
           ...DEFAULT_CONFIG.providers,
           ...(parsed.providers || {})
+        },
+        whisper: {
+          ...DEFAULT_CONFIG.whisper,
+          ...(parsed.whisper || {})
         }
       };
     }
@@ -304,6 +316,13 @@ router.post('/config', (req, res) => {
       };
     }
 
+    if (whisper && typeof whisper === 'object') {
+      current.whisper = {
+        ...current.whisper,
+        ...whisper
+      };
+    }
+
     const saved = saveConfig(current);
     if (!saved) {
       return res.status(500).json({ success: false, error: 'Kunne ikke gemme konfigurationen i server/config.json' });
@@ -326,6 +345,122 @@ router.post('/test-config', async (req, res) => {
   const result = await testProviderConnection(targetProvider, settings);
   res.json(result);
 });
+// POST /api/ai/transcribe - Central Whisper tale-til-tekst endpoint
+router.post('/transcribe', async (req, res) => {
+  try {
+    const config = loadConfig();
+    const whisperConfig = config.whisper || DEFAULT_CONFIG.whisper;
+
+    const { audio, audioBase64, mimeType } = req.body;
+    const base64Data = audioBase64 || audio;
+
+    if (!base64Data) {
+      return res.status(400).json({ success: false, error: 'Ingen lyddata modtaget på serveren' });
+    }
+
+    const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
+    const audioBuffer = Buffer.from(cleanBase64, 'base64');
+
+    if (audioBuffer.length === 0) {
+      return res.status(400).json({ success: false, error: 'Tom lydbuffer modtaget' });
+    }
+
+    const type = mimeType || 'audio/wav';
+    let filename = 'voice.mp3';
+    if (type.includes('wav')) filename = 'voice.wav';
+    else if (type.includes('webm')) filename = 'voice.webm';
+
+    const form = new FormData();
+    form.append('file', new Blob([audioBuffer], { type }), filename);
+    form.append('model', whisperConfig.model || 'small');
+    form.append('language', whisperConfig.language || 'da');
+    if (whisperConfig.prompt) {
+      form.append('prompt', whisperConfig.prompt);
+    }
+
+    const targetUrl = (whisperConfig.url || 'http://100.67.46.116:8000/v1/audio/transcriptions').trim();
+    const headers = {};
+    if (whisperConfig.apiKey && whisperConfig.apiKey.trim()) {
+      headers['Authorization'] = `Bearer ${whisperConfig.apiKey.trim()}`;
+    }
+
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers,
+      body: form
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({
+        success: false,
+        error: `Faster Whisper svarede med status ${response.status}: ${errText}`
+      });
+    }
+
+    const data = await response.json();
+    return res.json({
+      success: true,
+      text: (data.text || '').trim()
+    });
+  } catch (err) {
+    console.error('[Server Whisper] Fejl under transskription:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/ai/test-whisper - Tester forbindelsen til Faster Whisper fra Server-PC
+router.post('/test-whisper', async (req, res) => {
+  try {
+    const config = loadConfig();
+    const whisperConfig = {
+      ...(config.whisper || DEFAULT_CONFIG.whisper),
+      ...(req.body || {})
+    };
+
+    const targetUrl = (whisperConfig.url || 'http://100.67.46.116:8000/v1/audio/transcriptions').trim();
+    const baseUrl = targetUrl.replace(/\/v1\/audio\/transcriptions\/?$/, '');
+    const headers = {};
+    if (whisperConfig.apiKey && whisperConfig.apiKey.trim()) {
+      headers['Authorization'] = `Bearer ${whisperConfig.apiKey.trim()}`;
+    }
+
+    const testRes = await fetch(`${baseUrl}/v1/models`, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(5000)
+    }).catch(() => null);
+
+    if (testRes && (testRes.ok || testRes.status === 401 || testRes.status === 403)) {
+      return res.json({
+        success: true,
+        message: 'Forbindelse til Faster Whisper oprettet fra Server-PC!',
+        targetUrl
+      });
+    }
+
+    const baseRes = await fetch(baseUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000)
+    }).catch(() => null);
+
+    if (baseRes) {
+      return res.json({
+        success: true,
+        message: `Forbindelse til Whisper fundet (status ${baseRes.status}). Klar til diktering!`,
+        targetUrl
+      });
+    }
+
+    return res.status(502).json({
+      success: false,
+      message: `Server-PC kunne ikke forbinde til Faster Whisper på ${targetUrl}. Tjek IP og port.`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 
 // GET /api/ai/status - Tjekker status på serverens aktive AI
 router.get('/status', async (req, res) => {

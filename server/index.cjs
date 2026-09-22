@@ -29,14 +29,29 @@ app.use('/api', wordRoutes);
 // 2. ImT (Billede til tekst via serverens AI)
 app.use('/api/imt', imtRoutes);
 
-// 3. AI Assistent Hub (Viderestiller til Ollama på server-pc)
-app.use('/api/ai', aiRoutes);
+// 3. AI Assistent Hub (Viderestiller til Ollama, Gemini og Faster Whisper på server-pc)
+app.use('/api/ai', (req, res, next) => {
+  try {
+    // Frigiv require cache så opdateringer af AI-ruter træder i kraft straks uden nedetid
+    delete require.cache[require.resolve('./apps/ai/routes.cjs')];
+    const currentAiRoutes = require('./apps/ai/routes.cjs');
+    return currentAiRoutes(req, res, next);
+  } catch (err) {
+    return aiRoutes(req, res, next);
+  }
+});
 
 // 4. Auto-Update Distribution: Servér altid opdateret latest.yml og installationsfiler
 updateManager.setupExpressRoutes(app);
 app.use('/updates', express.static(updateManager.primaryDir));
 
-// 5. Server Information Endpoint (viser IP og status til klienter)
+// 5. Admin / Vedligeholdelse
+app.post('/api/admin/restart', (req, res) => {
+  res.json({ success: true, message: 'Server genstarter...' });
+  setTimeout(() => process.exit(0), 400);
+});
+
+// 6. Server Information Endpoint (viser IP og status til klienter)
 app.get('/api/server-info', (req, res) => {
   const networkInterfaces = os.networkInterfaces();
   const ips = [];

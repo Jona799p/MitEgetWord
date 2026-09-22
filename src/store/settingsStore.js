@@ -201,6 +201,29 @@ export const syncServerAIConfig = async () => {
           }
         }
 
+        if (srvConfig.whisper) {
+          if (srvConfig.whisper.url && current.whisperApiUrl !== srvConfig.whisper.url) {
+            current.whisperApiUrl = srvConfig.whisper.url;
+            changed = true;
+          }
+          if (srvConfig.whisper.apiKey && current.whisperApiKey !== srvConfig.whisper.apiKey) {
+            current.whisperApiKey = srvConfig.whisper.apiKey;
+            changed = true;
+          }
+          if (srvConfig.whisper.model && current.whisperModel !== srvConfig.whisper.model) {
+            current.whisperModel = srvConfig.whisper.model;
+            changed = true;
+          }
+          if (srvConfig.whisper.language && current.whisperLanguage !== srvConfig.whisper.language) {
+            current.whisperLanguage = srvConfig.whisper.language;
+            changed = true;
+          }
+          if (srvConfig.whisper.prompt && current.whisperPrompt !== srvConfig.whisper.prompt) {
+            current.whisperPrompt = srvConfig.whisper.prompt;
+            changed = true;
+          }
+        }
+
         // Hvis serveren angiver en aktiv provider, afspejl den
         if (srvConfig.activeProvider) {
           const mapped = srvConfig.activeProvider === 'ollama' ? 'local' : srvConfig.activeProvider;
@@ -378,35 +401,34 @@ export const testLanguageToolConnection = async (url, language = 'da-DK') => {
     };
   }
 };
-export const testWhisperConnection = async (url, apiKey) => {
+export const testWhisperConnection = async (customConfig = null) => {
+  const serverUrl = getServerUrl().replace(/\/+$/, '');
   try {
-    const targetUrl = (url || 'http://100.67.46.116:8000/v1/audio/transcriptions').trim();
-    const baseUrl = targetUrl.replace(/\/v1\/audio\/transcriptions\/?$/, '');
-    const headers = {};
-    if (apiKey) headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+    const res = await fetch(`${serverUrl}/api/ai/test-whisper`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(customConfig || {}),
+      signal: AbortSignal.timeout(6000)
+    });
 
-    const res = await fetch(`${baseUrl}/v1/models`, {
-      method: 'GET',
-      headers,
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => null);
-
-    if (res && (res.ok || res.status === 401 || res.status === 403)) {
-      return { success: true, message: 'Forbindelse til Whisper serveren oprettet!' };
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        success: true,
+        message: data.message || 'Forbindelse til Faster Whisper er verificeret via Server-PC!'
+      };
+    } else {
+      const err = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        message: err.message || `Server svarede med status ${res.status}`
+      };
     }
-
-    const baseRes = await fetch(baseUrl, {
-      method: 'GET',
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => null);
-
-    if (baseRes) {
-      return { success: true, message: `Forbindelse til Whisper server fundet (status ${baseRes.status}). Klar til diktering!` };
-    }
-
-    return { success: false, message: 'Kunne ikke forbinde til serveren på den angivne adresse.' };
   } catch (err) {
-    return { success: false, message: err.message || 'Kunne ikke forbinde til Whisper serveren' };
+    return {
+      success: false,
+      message: `Kunne ikke kontakte Server-PC (${serverUrl}): ${err.message}`
+    };
   }
 };
 

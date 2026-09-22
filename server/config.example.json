@@ -48,6 +48,15 @@
     "model": "qwen2.5vl:3b",
     "contextSize": 16384
   },
+  "whisper": {
+    "name": "Faster Whisper (Tale-til-Tekst)",
+    "description": "Faster Whisper tale-til-tekst server der modtager stemmeoptagelser fra klienter og transskriberer dem.",
+    "url": "http://100.67.46.116:8000/v1/audio/transcriptions",
+    "apiKey": "min-hemmelige-api-noegle-123",
+    "model": "small",
+    "language": "da",
+    "prompt": "Dette er en samtale på dansk. Her bruges komma, punktum og store bogstaver."
+  },
   "languagetool": {
     "url": "http://127.0.0.1:8011/v2",
     "language": "da-DK"

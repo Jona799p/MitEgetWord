@@ -1,4 +1,5 @@
 import { getSettings } from '../store/settingsStore';
+import { getServerUrl } from '../store/documentStore';
 
 class WhisperService {
   constructor() {
@@ -277,60 +278,52 @@ class WhisperService {
   }
 
   async sendAudioToWhisper(audioBlob) {
-    const settings = getSettings();
-    const apiUrl = settings.whisperApiUrl || 'http://100.67.46.116:8000/v1/audio/transcriptions';
-    const apiKey = settings.whisperApiKey || 'min-hemmelige-api-noegle-123';
-    const model = settings.whisperModel || 'small';
-    const language = settings.whisperLanguage || 'da';
-    const prompt = settings.whisperPrompt || 'Dette er en samtale på dansk. Her bruges komma, punktum og store bogstaver.';
+    const serverUrl = getServerUrl().replace(/\/+$/, '');
 
+    // Konverter lyd til 16kHz mono WAV i RAM
     const { buffer, mimeType } = await this.convertBlobToWav(audioBlob);
 
-    if (typeof window !== 'undefined' && window.require) {
-      try {
-        const { ipcRenderer } = window.require('electron');
-        const res = await ipcRenderer.invoke('transcribe-audio', {
-          audioBuffer: buffer,
-          mimeType,
-          apiUrl,
-          apiKey,
-          model,
-          language,
-          prompt
-        });
-        return res;
-      } catch (ipcErr) {
-        console.warn('[WhisperService] IPC-kald fejlede, prøver direkte fetch fallback:', ipcErr.message);
+    // Konverter ArrayBuffer til base64 i hukommelsen
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    const chunkSize = 16384;
+    for (let i = 0; i < len; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
+    }
+    const audioBase64 = btoa(binary);
+
+    try {
+      const response = await fetch(`${serverUrl}/api/ai/transcribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          audioBase64,
+          mimeType: mimeType || 'audio/wav'
+        }),
+        signal: AbortSignal.timeout(45000)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errorMsg = errData.error || `Server svarede med status ${response.status}`;
+        return { success: false, error: errorMsg };
       }
+
+      const data = await response.json();
+      return { success: true, text: (data.text || '').trim() };
+    } catch (err) {
+      console.error('[WhisperService] Fejl under afsendelse til server:', err);
+      let msg = err.message || 'Kunne ikke forbinde til Server-PC';
+      if (err.name === 'TimeoutError') {
+        msg = 'Tidsudløb: Server-PC tog for lang tid om at transskribere';
+      } else if (err.message && err.message.includes('Failed to fetch')) {
+        msg = `Kunne ikke forbinde til Server-PC på ${serverUrl}. Sørg for at MitEgetWord serveren kører.`;
+      }
+      return { success: false, error: msg };
     }
-
-    const formData = new FormData();
-    const filename = mimeType.includes('wav') ? 'voice.wav' : 'voice.mp3';
-    formData.append('file', new Blob([buffer], { type: mimeType }), filename);
-    formData.append('model', model);
-    formData.append('language', language);
-    if (prompt) {
-      formData.append('prompt', prompt);
-    }
-
-    const headers = {};
-    if (apiKey && apiKey.trim()) {
-      headers['Authorization'] = `Bearer ${apiKey.trim()}`;
-    }
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers,
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      return { success: false, error: `Whisper status ${response.status}: ${errText}` };
-    }
-
-    const data = await response.json();
-    return { success: true, text: (data.text || '').trim() };
   }
 
 }

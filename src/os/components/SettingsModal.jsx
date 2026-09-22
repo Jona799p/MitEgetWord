@@ -26,6 +26,7 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
   const [serverTestState, setServerTestState] = useState(null);
   const [ltTestState, setLtTestState] = useState(null);
   const [whisperTestState, setWhisperTestState] = useState(null);
+  const [whisperSaveFeedback, setWhisperSaveFeedback] = useState(null);
   const [savedFeedback, setSavedFeedback] = useState(false);
   
   // Active selected provider sub-tab in AI settings
@@ -322,13 +323,53 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
   };
 
   const handleTestWhisper = async () => {
-    setWhisperTestState({ loading: true, message: 'Tester forbindelse til Faster Whisper...' });
-    const res = await testWhisperConnection(settings.whisperApiUrl, settings.whisperApiKey);
+    setWhisperTestState({ loading: true, message: 'Tester forbindelse fra Server-PC til Faster Whisper...' });
+    const res = await testWhisperConnection({
+      url: settings.whisperApiUrl,
+      apiKey: settings.whisperApiKey
+    });
     setWhisperTestState({
       loading: false,
       success: res.success,
       message: res.message
     });
+  };
+
+  const handleSaveWhisperToServer = async () => {
+    setWhisperSaveFeedback({ loading: true, message: 'Gemmer på Server-PC...' });
+    try {
+      const cleanUrl = serverUrlInput.replace(/\/+$/, '');
+      const res = await fetch(`${cleanUrl}/api/ai/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          whisper: {
+            url: settings.whisperApiUrl,
+            apiKey: settings.whisperApiKey,
+            model: settings.whisperModel,
+            language: settings.whisperLanguage,
+            prompt: settings.whisperPrompt
+          }
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWhisperSaveFeedback({ loading: false, success: true, message: 'Whisper-indstillinger er gemt på Server-PC!' });
+        setTimeout(() => setWhisperSaveFeedback(null), 3500);
+        saveSettings({
+          whisperApiUrl: settings.whisperApiUrl,
+          whisperApiKey: settings.whisperApiKey,
+          whisperModel: settings.whisperModel,
+          whisperLanguage: settings.whisperLanguage,
+          whisperPrompt: settings.whisperPrompt
+        });
+      } else {
+        setWhisperSaveFeedback({ loading: false, success: false, message: data.error || 'Kunne ikke gemme' });
+      }
+    } catch (err) {
+      setWhisperSaveFeedback({ loading: false, success: false, message: `Fejl: ${err.message}` });
+    }
   };
 
   const handleResetSettings = () => {
@@ -1036,13 +1077,13 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
                   {/* Genvejstast & Sikkerhedsinfo Card */}
                   <div className="prompts-nav-callout" style={{ marginTop: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Mic size={16} color="#38bdf8" />
-                      <strong style={{ fontSize: 13, color: 'var(--text-primary, #ffffff)' }}>Tastatursikret optagelse med AltGr</strong>
+                      <Server size={16} color="#38bdf8" />
+                      <strong style={{ fontSize: 13, color: 'var(--text-primary, #ffffff)' }}>Server-styret Faster Whisper AI</strong>
                     </div>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary, #aaaaaa)', lineHeight: 1.6 }}>
-                      • Tryk <strong>AltGr</strong> for at starte optagelse, og tryk igen (eller slip hvis du holdt den nede) for at indsætte teksten hvor end din markør står.<br />
-                      • Du kan også bruge den visuelle mikrofonknap i AI-pillen forneden.<br />
-                      • <strong>Privatliv:</strong> Lydoptagelsen gemmes aldrig som en fil på din computer. Den behandles udelukkende i hukommelsen (RAM) og slettes straks efter afsendelse.<br />
+                      • <strong>Serveren klarer det hele:</strong> Klienterne optager blot stemmen og sender den direkte til din centrale Server-PC (<code>{serverUrlInput}</code>). Server-PC'en kontakter Faster Whisper og returnerer den færdige tekst.<br />
+                      • <strong>Tastatursikret med AltGr:</strong> Tryk <strong>AltGr</strong> for at starte optagelse, og tryk igen (eller slip hvis du holdt den nede) for at indsætte teksten hvor end din markør står.<br />
+                      • <strong>Privatliv:</strong> Der gemmes ingen lydfiler hverken på klienten eller på serveren. Lyddata behandles udelukkende i hukommelsen (RAM) og slettes straks efter afsendelse.<br />
                       • <strong>Tastatursikret:</strong> Specialtegn som <code>@</code>, <code>€</code>, <code>{'{'}</code>, <code>{'}'}</code>, <code>[</code>, <code>]</code> virker uforstyrret som normalt.
                     </span>
                   </div>
@@ -1120,20 +1161,39 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'appearance' }) => {
                   </div>
 
                   {/* Test Connection Button and Status */}
-                  <div className="provider-test-row" style={{ marginTop: 16 }}>
+                  <div className="provider-test-row" style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                     <button 
                       type="button" 
                       className="test-btn" 
-                      disabled={whisperTestState?.loading || !settings.whisperApiUrl}
+                      disabled={whisperTestState?.loading}
                       onClick={handleTestWhisper}
                     >
                       {whisperTestState?.loading ? <RefreshCw size={14} className="spin" /> : <Mic size={14} />}
-                      <span>Test Forbindelse til Whisper</span>
+                      <span>Test Forbindelse (via Server-PC)</span>
                     </button>
+
+                    <button 
+                      type="button" 
+                      className="save-server-ai-btn"
+                      style={{ padding: '7px 15px', fontSize: 13, background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#38bdf8', borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      disabled={whisperSaveFeedback?.loading}
+                      onClick={handleSaveWhisperToServer}
+                    >
+                      {whisperSaveFeedback?.loading ? <RefreshCw size={14} className="spin" /> : <HardDrive size={14} />}
+                      <span>Gem på Server-PC</span>
+                    </button>
+
                     {whisperTestState && (
                       <div className={`test-result ${whisperTestState.success ? 'success' : 'error'}`}>
                         {whisperTestState.success ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
                         <span>{whisperTestState.message}</span>
+                      </div>
+                    )}
+
+                    {whisperSaveFeedback && (
+                      <div className={`test-result ${whisperSaveFeedback.success ? 'success' : 'error'}`}>
+                        {whisperSaveFeedback.success ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                        <span>{whisperSaveFeedback.message}</span>
                       </div>
                     )}
                   </div>

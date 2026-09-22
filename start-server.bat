@@ -41,10 +41,10 @@ echo Tast Ctrl+C for at stoppe serveren.
 echo ========================================================
 echo.
 
+:serverloop
 node --max-old-space-size=4096 server/index.cjs
 
-if %errorlevel% neq 0 (
-    echo.
-    echo [FEJL] Serveren lukkede uventet.
-    pause
-)
+echo.
+echo [INFO] Serveren genstarter om 2 sekunder...
+timeout /t 2 /nobreak >nul
+goto serverloop
