@@ -8,7 +8,7 @@ import {
   Printer, FileDown, FileText, Globe, FileCode, ChevronDown, Eye,
   Paintbrush, RemoveFormatting, CaseSensitive, AArrowUp, AArrowDown, ArrowDownUp,
   Sun, Moon, BookOpen, FilePlus, Sliders, Check, Bookmark, PanelTop, PanelBottom,
-  Search, Maximize2, History, SpellCheck, RefreshCw
+  Search, Maximize2, History, SpellCheck, RefreshCw, FolderOpen
 } from 'lucide-react';
 import { clearFormatting, transformCase } from './TypographyExtensions';
 import PortalDropdown from './PortalDropdown';

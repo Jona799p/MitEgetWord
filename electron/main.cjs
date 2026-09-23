@@ -525,13 +525,15 @@ ipcMain.handle('quit-and-install-update', () => {
   console.log('[AutoUpdater] quitAndInstall eksekveres...');
   if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
     console.log(`[AutoUpdater] Starter direkte downloadet installer: ${downloadedInstallerPath}`);
-    const child = spawn(downloadedInstallerPath, [], { detached: true, stdio: 'ignore' });
+    // Tilføjet '/S' (Silent) for at installere usynligt i baggrunden ved direkte download
+    const child = spawn(downloadedInstallerPath, ['/S'], { detached: true, stdio: 'ignore' });
     child.unref();
     app.quit();
     return;
   }
   try {
-    autoUpdater.quitAndInstall(false, true);
+    // Ændret til true, true (isSilent=true, isForceRunAfter=true) for usynlig automatisk opdatering
+    autoUpdater.quitAndInstall(true, true);
   } catch (err) {
     console.warn('[AutoUpdater] quitAndInstall fejlede, lukker appen:', err.message);
     app.quit();
