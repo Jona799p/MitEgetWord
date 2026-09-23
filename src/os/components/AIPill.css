@@ -378,154 +378,7 @@
   line-height: 22px;
   padding: 10px 4px;
   max-height: 150px;
-/* ==========================================================================
-   Microphone Button & Speech Recording Status (Whisper)
-   ========================================================================== */
-.ai-pill-container:not(.expanded) .ai-pill {
-  width: 98px;
-  padding: 0 6px;
-  gap: 4px;
-}
-
-.ai-mic-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  padding: 0;
-  margin: 0;
-  outline: none;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.ai-pill-container:not(.expanded) .ai-mic-btn {
-  width: 40px;
-  height: 40px;
-}
-
-.ai-mic-btn:hover {
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  transform: scale(1.05);
-}
-
-.ai-mic-btn.recording {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.22);
-  animation: aiMicPulse 1.2s ease-in-out infinite;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.55);
-}
-
-.ai-mic-btn.transcribing {
-  color: #a78bfa;
-  background: rgba(167, 139, 250, 0.18);
-}
-
-@keyframes aiMicPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
-  }
-  50% {
-    transform: scale(1.12);
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
-  }
-}
-
-/* Listening & Transcribing Status Banner */
-.ai-speech-status-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 18px;
-  border-radius: 9999px;
-  background: rgba(28, 16, 18, 0.96);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  color: #fecaca;
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 6px 22px rgba(239, 68, 68, 0.28);
-  animation: aiSlideUp 0.2s ease-out;
-  backdrop-filter: blur(16px);
-  max-width: 680px;
-}
-
-.ai-speech-status-banner.transcribing {
-  background: rgba(22, 20, 32, 0.96);
-  border-color: rgba(167, 139, 250, 0.45);
-  color: #ddd6fe;
-  box-shadow: 0 6px 22px rgba(167, 139, 250, 0.28);
-}
-
-.ai-speech-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
-  animation: aiDotBlink 1s infinite alternate;
-}
-
-@keyframes aiDotBlink {
-  0% { opacity: 0.4; transform: scale(0.85); }
-  100% { opacity: 1; transform: scale(1.15); }
-}
-
-.ai-speech-waves {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 14px;
-}
-
-.ai-speech-wave-bar {
-  width: 3px;
-  height: 100%;
-  background: #f87171;
-  border-radius: 2px;
-  animation: aiWaveAnim 0.8s ease-in-out infinite alternate;
-}
-
-.ai-speech-wave-bar:nth-child(1) { animation-delay: 0.1s; height: 35%; }
-.ai-speech-wave-bar:nth-child(2) { animation-delay: 0.3s; height: 85%; }
-.ai-speech-wave-bar:nth-child(3) { animation-delay: 0.15s; height: 100%; }
-.ai-speech-wave-bar:nth-child(4) { animation-delay: 0.4s; height: 50%; }
-
-@keyframes aiWaveAnim {
-  0% { transform: scaleY(0.3); }
-  100% { transform: scaleY(1); }
-}
-
-.ai-speech-text {
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
-
-.ai-speech-hint {
-  font-size: 11.5px;
-  color: #94a3b8;
-  margin-left: 4px;
-}
-
-.ai-pill.listening {
-  border-color: rgba(239, 68, 68, 0.55);
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.22);
-}
-
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
 }
 
 .ai-input::-webkit-scrollbar {
@@ -539,6 +392,240 @@
 
 .ai-input::placeholder {
   color: #71717a;
+}
+
+/* ==========================================================================
+   Microphone Button & Speech Recording Pill (Whisper)
+   ========================================================================== */
+.ai-mic-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0 4px;
+  outline: none;
+}
+
+.ai-mic-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  transform: scale(1.06);
+}
+
+.ai-mic-btn:active {
+  transform: scale(0.95);
+}
+
+.ai-mic-btn.recording {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.ai-mic-btn.transcribing {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
+  color: #a78bfa;
+}
+
+/* Kompakt pillestørrelse når ikke udvidet */
+.ai-pill-container:not(.expanded) .ai-pill {
+  width: 98px;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+/* ==========================================================================
+   Kompakt optagelses-pille med lydvisualisering
+   ========================================================================== */
+.ai-pill-container .ai-pill.recording,
+.ai-pill-container.expanded .ai-pill.recording {
+  width: 270px;
+  max-width: 90vw;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.25), 0 8px 30px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(20, 16, 20, 0.96);
+  backdrop-filter: blur(24px);
+  animation: aiRecordingPulse 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes aiRecordingPulse {
+  0% {
+    border-color: rgba(239, 68, 68, 0.45);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.2), 0 8px 30px rgba(0, 0, 0, 0.6);
+  }
+  100% {
+    border-color: rgba(239, 68, 68, 0.7);
+    box-shadow: 0 0 28px rgba(239, 68, 68, 0.35), 0 8px 30px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.ai-recording-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ai-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: aiDotBlink 1s infinite alternate;
+}
+
+@keyframes aiDotBlink {
+  0% { opacity: 0.35; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+.ai-recording-timer {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fecaca;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4px;
+}
+
+/* Lydbølger: streger på række der reagerer på stemmen */
+.ai-voice-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  flex: 1;
+  padding: 0 6px;
+}
+
+.ai-voice-bar {
+  width: 3.5px;
+  height: 6px;
+  min-height: 4px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #38bdf8 0%, #818cf8 55%, #f43f5e 100%);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.35);
+  transition: height 0.07s ease-out;
+  flex-shrink: 0;
+}
+
+/* Fallback animation for lydbølger hvis AudioContext er dvalet */
+.ai-voice-visualizer.fallback .ai-voice-bar {
+  animation: aiVoiceBarBounce 0.85s ease-in-out infinite alternate;
+}
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(1) { animation-delay: 0.15s; height: 8px; }
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(2) { animation-delay: 0.35s; height: 16px; }
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(3) { animation-delay: 0.05s; height: 22px; }
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(4) { animation-delay: 0.25s; height: 26px; }
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(5) { animation-delay: 0.1s; height: 20px; }
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(6) { animation-delay: 0.4s; height: 14px; }
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(7) { animation-delay: 0.2s; height: 7px; }
+
+@keyframes aiVoiceBarBounce {
+  0% { transform: scaleY(0.4); opacity: 0.6; }
+  100% { transform: scaleY(1.15); opacity: 1; }
+}
+
+.ai-recording-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.ai-record-stop-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.45);
+  padding: 0;
+  outline: none;
+}
+
+.ai-record-stop-btn:hover {
+  background: #dc2626;
+  transform: scale(1.08);
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.6);
+}
+
+.ai-record-cancel-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.ai-record-cancel-btn:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ==========================================================================
+   Kompakt transskriberings-pille
+   ========================================================================== */
+.ai-pill-container .ai-pill.transcribing,
+.ai-pill-container.expanded .ai-pill.transcribing {
+  width: 210px;
+  max-width: 90vw;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  box-shadow: 0 0 22px rgba(167, 139, 250, 0.25), 0 8px 30px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(20, 18, 28, 0.96);
+  backdrop-filter: blur(24px);
+}
+
+.ai-transcribing-content {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #ddd6fe;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
 }
 
 /* Model engine tag - Centered in Y axis, modern pill look */

@@ -16,6 +16,11 @@ class WhisperService {
     };
     this.listeners = new Set();
     this.timerInterval = null;
+    this.recordingSource = 'global';
+  }
+
+  getAudioStream() {
+    return this.audioStream;
   }
 
   subscribe(listener) {
@@ -43,10 +48,12 @@ class WhisperService {
     this.notify();
   }
 
-  async startRecording() {
+  async startRecording(source = 'global') {
     if (this.state.isRecording || this.state.isTranscribing) {
       return;
     }
+
+    this.recordingSource = source;
 
     try {
       this.setState({ error: null, duration: 0 });
@@ -152,7 +159,7 @@ class WhisperService {
             });
 
             window.dispatchEvent(new CustomEvent('speech:transcription-complete', {
-              detail: { text: result.text }
+              detail: { text: result.text, source: this.recordingSource || 'global' }
             }));
 
             resolve(result);
@@ -198,15 +205,16 @@ class WhisperService {
     }
 
     this.audioChunks = [];
+    this.recordingSource = 'global';
     this.setState({ isRecording: false, isTranscribing: false, duration: 0 });
     window.dispatchEvent(new CustomEvent('speech:recording-cancelled'));
   }
 
-  toggleRecording() {
+  toggleRecording(source = 'global') {
     if (this.state.isRecording) {
       return this.stopRecording();
     } else if (!this.state.isTranscribing) {
-      return this.startRecording();
+      return this.startRecording(source);
     }
   }
 

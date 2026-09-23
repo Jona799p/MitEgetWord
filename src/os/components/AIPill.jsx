@@ -38,6 +38,106 @@ const QUICK_PROMPTS_BOTTOM = [
   }
 ];
 
+const formatDuration = (seconds) => {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+};
+
+const VoiceVisualizer = ({ isRecording }) => {
+  const barsRef = useRef(null);
+
+  useEffect(() => {
+    if (!isRecording) return;
+
+    let audioCtx = null;
+    let analyser = null;
+    let sourceNode = null;
+    let animId = null;
+    let isFallback = true;
+
+    try {
+      const stream = whisperService.getAudioStream();
+      if (stream && stream.active && stream.getAudioTracks().length > 0) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          analyser.smoothingTimeConstant = 0.55;
+          sourceNode = audioCtx.createMediaStreamSource(stream);
+          sourceNode.connect(analyser);
+          isFallback = false;
+        }
+      }
+    } catch (err) {
+      console.warn('[VoiceVisualizer] Kunne ikke opsætte AudioContext:', err);
+      isFallback = true;
+    }
+
+    if (isFallback) {
+      if (barsRef.current) {
+        barsRef.current.classList.add('fallback');
+      }
+      return;
+    }
+
+    if (barsRef.current) {
+      barsRef.current.classList.remove('fallback');
+    }
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    // 7 frekvensbånd tilpasset menneskelig tale
+    const binIndices = [1, 2, 4, 6, 8, 11, 14];
+
+    const renderBars = () => {
+      if (!analyser || !barsRef.current) return;
+      analyser.getByteFrequencyData(dataArray);
+
+      const barElements = barsRef.current.children;
+      for (let i = 0; i < binIndices.length; i++) {
+        const bar = barElements[i];
+        if (bar) {
+          const val = dataArray[binIndices[i]] || 0;
+          // Normaliser lydstyrke (0-255) til højde mellem 4px og 26px
+          const normalized = Math.min(1, Math.max(0, (val - 12) / 150));
+          const height = Math.round(4 + normalized * 22);
+          bar.style.height = `${height}px`;
+        }
+      }
+
+      animId = requestAnimationFrame(renderBars);
+    };
+
+    animId = requestAnimationFrame(renderBars);
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      if (sourceNode) {
+        try { sourceNode.disconnect(); } catch {}
+      }
+      if (analyser) {
+        try { analyser.disconnect(); } catch {}
+      }
+      if (audioCtx && audioCtx.state !== 'closed') {
+        try { audioCtx.close(); } catch {}
+      }
+    };
+  }, [isRecording]);
+
+  return (
+    <div ref={barsRef} className="ai-voice-visualizer fallback">
+      <span className="ai-voice-bar" />
+      <span className="ai-voice-bar" />
+      <span className="ai-voice-bar" />
+      <span className="ai-voice-bar" />
+      <span className="ai-voice-bar" />
+      <span className="ai-voice-bar" />
+      <span className="ai-voice-bar" />
+    </div>
+  );
+};
+
 const AIPill = ({ isDashboard }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
@@ -65,12 +165,21 @@ const AIPill = ({ isDashboard }) => {
 
     const handleSpeechComplete = (e) => {
       const text = e.detail?.text;
+      const source = e.detail?.source;
       if (text) {
-        setActionFeedback('Tale indsat ved markør');
-        setTimeout(() => setActionFeedback(null), 3500);
-        if (!window.__activeWordEditor) {
+        if (source === 'pill' || !window.__activeWordEditor) {
           setInput(prev => prev ? `${prev} ${text}` : text);
           setIsExpanded(true);
+          setActionFeedback('Tale indsat i feltet');
+          setTimeout(() => setActionFeedback(null), 3500);
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.focus();
+            }
+          }, 60);
+        } else {
+          setActionFeedback('Tale indsat i dokument');
+          setTimeout(() => setActionFeedback(null), 3500);
         }
       }
     };
@@ -175,7 +284,11 @@ const AIPill = ({ isDashboard }) => {
   const handleMicClick = (e) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
-    whisperService.toggleRecording();
+    if (whisperState.isRecording) {
+      whisperService.stopRecording();
+    } else {
+      whisperService.startRecording('pill');
+    }
   };
 
   // Direkte lynhurtig overførsel fra ImT til dokumentet (0s ventetid, 0 tokens)
@@ -819,6 +932,7 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
       className={`ai-pill-container ${isExpanded ? 'expanded' : ''}`}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => {
+        if (whisperState.isRecording || whisperState.isTranscribing) return;
         // Luk på hover-out hvis vi ikke har skrevet noget og der ikke er et aktivt svar
         if (document.activeElement !== inputRef.current && !latestResponse && !input) {
           setIsExpanded(false);
@@ -888,27 +1002,6 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
         </div>
       )}
 
-      {/* Tale-til-tekst Lytte / Behandler status banner */}
-      {whisperState.isRecording && (
-        <div className="ai-speech-status-banner">
-          <span className="ai-speech-dot" />
-          <span className="ai-speech-text">Lytter efter stemme... {whisperState.duration > 0 ? `${whisperState.duration}s` : ''}</span>
-          <div className="ai-speech-waves">
-            <span className="ai-speech-wave-bar" />
-            <span className="ai-speech-wave-bar" />
-            <span className="ai-speech-wave-bar" />
-            <span className="ai-speech-wave-bar" />
-          </div>
-          <span className="ai-speech-hint">(Tryk AltGr eller klik for at afslutte)</span>
-        </div>
-      )}
-
-      {whisperState.isTranscribing && (
-        <div className="ai-speech-status-banner transcribing">
-          <Loader2 size={14} className="ai-spin" />
-          <span className="ai-speech-text">Transskriberer via Faster Whisper...</span>
-        </div>
-      )}
 
       {/* Handling status badge (f.eks. ved dokumentredigering eller tale) */}
       {actionFeedback && (
@@ -941,7 +1034,7 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
       )}
 
       {/* Hurtige prompt-piller (svæver over AI-pillen ved hover - 1 foroven, 3 forneden) */}
-      {isExpanded && !isLoading && !input.trim() && (
+      {isExpanded && !isLoading && !input.trim() && !whisperState.isRecording && !whisperState.isTranscribing && (
         <div className="ai-quick-prompts">
           {imtState.isOpen && imtState.canvasText.trim() && (
             <div className="ai-quick-row imt-row">
@@ -996,142 +1089,167 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
         </div>
       )}
 
-      {/* Input Pille */}
-      <div className={`ai-pill ${isLoading ? 'working' : ''} ${whisperState.isRecording ? 'listening' : ''}`}>
-        {isLoading && <div className="ai-working-bar" />}
+      {/* Input Pille / Optagelses-pille */}
+      {whisperState.isRecording ? (
+        <div className="ai-pill recording">
+          <div className="ai-recording-left">
+            <span className="ai-recording-dot" />
+            <span className="ai-recording-timer">{formatDuration(whisperState.duration)}</span>
+          </div>
 
-        <button 
-          type="button"
-          className={`ai-icon-btn ${isLoading ? 'working' : ''}`}
-          title={`Aktiv AI: ${
-            currentSettings.aiProvider === 'local' 
-              ? `Lokal AI (${currentSettings.localModelName || 'llama3'})` 
-              : (currentSettings.aiProvider || 'Gemini')
-          }. Klik for at åbne Indstillinger.`}
-          onClick={() => window.dispatchEvent(new CustomEvent('openSettings'))}
-        >
-          <Sparkles size={17} className={`ai-icon-svg ${isLoading ? 'working' : ''}`} />
-        </button>
+          <VoiceVisualizer isRecording={whisperState.isRecording} />
 
-        {!isExpanded && (
-          <button
-            type="button"
-            className={`ai-mic-btn ${whisperState.isRecording ? 'recording' : ''} ${whisperState.isTranscribing ? 'transcribing' : ''}`}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={handleMicClick}
-            title={whisperState.isRecording ? 'Stopper og transskriberer (AltGr)' : 'Tale til tekst (AltGr)'}
-          >
-            {whisperState.isTranscribing ? (
-              <Loader2 size={16} className="ai-spin" />
-            ) : whisperState.isRecording ? (
-              <Square size={13} fill="#ef4444" color="#ef4444" />
-            ) : (
-              <Mic size={16} />
-            )}
-          </button>
-        )}
-        
-        {isExpanded && (
-          <>
-            <textarea 
-              ref={inputRef}
-              className="ai-input" 
-              placeholder={isLoading ? 'Arbejder på dokumentet...' : `Spørg ${
-                currentSettings.aiProvider === 'local' 
-                  ? `Lokal AI (${currentSettings.localModelName || 'qwen3.5:9b'})` 
-                  : (currentSettings.aiProvider === 'gemini' 
-                      ? `Gemini (${currentSettings.geminiModel || 'gemini-2.5-flash'})` 
-                      : (currentSettings.aiProvider === 'openai' 
-                          ? 'OpenAI' 
-                          : (currentSettings.aiProvider === 'anthropic' 
-                              ? 'Claude' 
-                              : (currentSettings.aiProvider === 'server'
-                                  ? `Server (${currentSettings.serverModelName || currentSettings.geminiModel || 'gemini-2.5-flash'})`
-                                  : (currentSettings.aiProvider || 'Gemini')))))
-              }`} 
-              value={input}
-              onChange={handleInput}
-              onFocus={handleFocus}
-              onKeyDown={handleKeyDown}
-              disabled={isLoading}
-              rows="1"
-            />
-
-            {imtState.isOpen && (
-              <button 
-                type="button" 
-                className={`ai-imt-tag ${imtAttached ? 'attached' : ''}`}
-                onClick={() => setImtAttached(prev => !prev)}
-                title={imtAttached 
-                  ? `ImT tekst er vedhæftet (${imtState.wordCount} ord). Klik for at fjerne.` 
-                  : `ImT er åbent (${imtState.wordCount} ord). Klik for at vedhæfte til næste AI-promt.`}
-              >
-                <span className={`ai-imt-dot ${imtAttached ? 'active' : ''}`} />
-                <span className="ai-imt-name">{imtAttached ? 'ImT Aktiv' : '+ ImT'}</span>
-              </button>
-            )}
-
+          <div className="ai-recording-actions">
             <button 
               type="button" 
-              className="ai-engine-tag"
-              onClick={() => window.dispatchEvent(new CustomEvent('openSettings'))}
-              title="Aktiv AI. Klik for at skifte model i Indstillinger"
+              className="ai-record-stop-btn"
+              onClick={handleMicClick}
+              title="Stop og overfør tale (AltGr)"
             >
-              <span className="ai-engine-dot" />
-              <span className="ai-engine-name">
-                {currentSettings.aiProvider === 'local' 
-                  ? (currentSettings.localModelName || 'Lokal AI') 
-                  : (currentSettings.aiProvider === 'gemini' 
-                      ? (currentSettings.geminiModel || 'Gemini') 
-                      : (currentSettings.aiProvider === 'server'
-                          ? (currentSettings.serverModelName || currentSettings.geminiModel || 'Server AI')
-                          : (currentSettings.aiProvider || 'Gemini')))}
-              </span>
+              <Square size={12} fill="#ffffff" color="#ffffff" />
             </button>
-            
+            <button 
+              type="button" 
+              className="ai-record-cancel-btn"
+              onClick={() => whisperService.cancelRecording()}
+              title="Annuller optagelse"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      ) : whisperState.isTranscribing ? (
+        <div className="ai-pill transcribing">
+          <div className="ai-transcribing-content">
+            <Loader2 size={16} className="ai-spin" color="#a78bfa" />
+            <span>Transskriberer...</span>
+          </div>
+        </div>
+      ) : (
+        <div className={`ai-pill ${isLoading ? 'working' : ''}`}>
+          {isLoading && <div className="ai-working-bar" />}
+
+          <button 
+            type="button" 
+            className={`ai-icon-btn ${isLoading ? 'working' : ''}`}
+            title={`Aktiv AI: ${
+              currentSettings.aiProvider === 'local' 
+                ? `Lokal AI (${currentSettings.localModelName || 'llama3'})` 
+                : (currentSettings.aiProvider || 'Gemini')
+            }. Klik for at åbne Indstillinger.`}
+            onClick={() => window.dispatchEvent(new CustomEvent('openSettings'))}
+          >
+            <Sparkles size={17} className={`ai-icon-svg ${isLoading ? 'working' : ''}`} />
+          </button>
+
+          {!isExpanded && (
             <button
               type="button"
-              className={`ai-mic-btn ${whisperState.isRecording ? 'recording' : ''} ${whisperState.isTranscribing ? 'transcribing' : ''}`}
+              className="ai-mic-btn"
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleMicClick}
-              title={whisperState.isRecording ? 'Stopper og transskriberer tale (AltGr)' : 'Tale til tekst (AltGr)'}
+              title="Tale til tekst (AltGr)"
             >
-              {whisperState.isTranscribing ? (
-                <Loader2 size={16} className="ai-spin" />
-              ) : whisperState.isRecording ? (
-                <Square size={13} fill="#ef4444" color="#ef4444" />
-              ) : (
-                <Mic size={16} />
-              )}
+              <Mic size={16} />
             </button>
+          )}
+          
+          {isExpanded && (
+            <>
+              <textarea 
+                ref={inputRef}
+                className="ai-input" 
+                placeholder={isLoading ? 'Arbejder på dokumentet...' : `Spørg ${
+                  currentSettings.aiProvider === 'local' 
+                    ? `Lokal AI (${currentSettings.localModelName || 'qwen3.5:9b'})` 
+                    : (currentSettings.aiProvider === 'gemini' 
+                        ? `Gemini (${currentSettings.geminiModel || 'gemini-2.5-flash'})` 
+                        : (currentSettings.aiProvider === 'openai' 
+                            ? 'OpenAI' 
+                            : (currentSettings.aiProvider === 'anthropic' 
+                                ? 'Claude' 
+                                : (currentSettings.aiProvider === 'server'
+                                    ? `Server (${currentSettings.serverModelName || currentSettings.geminiModel || 'gemini-2.5-flash'})`
+                                    : (currentSettings.aiProvider || 'Gemini')))))
+                }`} 
+                value={input}
+                onChange={handleInput}
+                onFocus={handleFocus}
+                onKeyDown={handleKeyDown}
+                disabled={isLoading}
+                rows="1"
+              />
 
-            <button 
-              type="button"
-              className={`ai-send-btn ${input.trim() ? 'active' : ''} ${isLoading ? 'loading' : ''}`} 
-              onClick={handleSend} 
-              disabled={!input.trim() || isLoading}
-              title={isLoading ? 'Arbejder...' : 'Send'}
-            >
-              {isLoading ? (
-                <Loader2 size={16} className="ai-spin" />
-              ) : (
-                <ArrowUp size={16} strokeWidth={2.4} />
+              {imtState.isOpen && (
+                <button 
+                  type="button" 
+                  className={`ai-imt-tag ${imtAttached ? 'attached' : ''}`}
+                  onClick={() => setImtAttached(prev => !prev)}
+                  title={imtAttached 
+                    ? `ImT tekst er vedhæftet (${imtState.wordCount} ord). Klik for at fjerne.` 
+                    : `ImT er åbent (${imtState.wordCount} ord). Klik for at vedhæfte til næste AI-promt.`}
+                >
+                  <span className={`ai-imt-dot ${imtAttached ? 'active' : ''}`} />
+                  <span className="ai-imt-name">{imtAttached ? 'ImT Aktiv' : '+ ImT'}</span>
+                </button>
               )}
-            </button>
-            
-            {input.trim() && (
+
+              <button 
+                type="button" 
+                className="ai-engine-tag"
+                onClick={() => window.dispatchEvent(new CustomEvent('openSettings'))}
+                title="Aktiv AI. Klik for at skifte model i Indstillinger"
+              >
+                <span className="ai-engine-dot" />
+                <span className="ai-engine-name">
+                  {currentSettings.aiProvider === 'local' 
+                    ? (currentSettings.localModelName || 'Lokal AI') 
+                    : (currentSettings.aiProvider === 'gemini' 
+                        ? (currentSettings.geminiModel || 'Gemini') 
+                        : (currentSettings.aiProvider === 'server'
+                            ? (currentSettings.serverModelName || currentSettings.geminiModel || 'Server AI')
+                            : (currentSettings.aiProvider || 'Gemini')))}
+                </span>
+              </button>
+              
+              <button
+                type="button"
+                className="ai-mic-btn"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleMicClick}
+                title="Tale til tekst (AltGr)"
+              >
+                <Mic size={16} />
+              </button>
+
               <button 
                 type="button"
-                className="ai-close-btn" 
-                onClick={() => { setInput(''); if (inputRef.current) inputRef.current.style.height = 'auto'; }}
-                title="Ryd tekst"
+                className={`ai-send-btn ${input.trim() ? 'active' : ''} ${isLoading ? 'loading' : ''}`} 
+                onClick={handleSend} 
+                disabled={!input.trim() || isLoading}
+                title={isLoading ? 'Arbejder...' : 'Send'}
               >
-                <X size={15} />
+                {isLoading ? (
+                  <Loader2 size={16} className="ai-spin" />
+                ) : (
+                  <ArrowUp size={16} strokeWidth={2.4} />
+                )}
               </button>
-            )}
-          </>
-        )}
-      </div>
+              
+              {input.trim() && (
+                <button 
+                  type="button"
+                  className="ai-close-btn" 
+                  onClick={() => { setInput(''); if (inputRef.current) inputRef.current.style.height = 'auto'; }}
+                  title="Ryd tekst"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -1384,6 +1384,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
 
     // Lyt efter tale-til-tekst indsættelse ved cursor
     const handleInsertSpeechText = (e: any) => {
+      if (e.detail?.source === 'pill') return;
       let text = e.detail?.text;
       if (!text || typeof text !== 'string') return;
       text = text.trim();
