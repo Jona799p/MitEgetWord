@@ -6,8 +6,6 @@ import {
   List, ListOrdered, Undo, Redo, Image as ImageIcon, Link as LinkIcon,
   Table as TableIcon, Minus, Type, Highlighter, PaintBucket, Indent, Outdent, Save,
   Printer, FileDown, FileText, Globe, FileCode, ChevronDown, Eye,
-  ArrowUpToLine, ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine,
-  MinusCircle, MinusSquare, Trash2, Folder, FolderOpen,
   Paintbrush, RemoveFormatting, CaseSensitive, AArrowUp, AArrowDown, ArrowDownUp,
   Sun, Moon, BookOpen, FilePlus, Sliders, Check, Bookmark, PanelTop, PanelBottom,
   Search, Maximize2, History, SpellCheck, RefreshCw
@@ -63,11 +61,15 @@ const Ribbon: React.FC<RibbonProps> = ({
   const [isImageDropdownOpen, setIsImageDropdownOpen] = useState(false);
   const [isCaseDropdownOpen, setIsCaseDropdownOpen] = useState(false);
   const [isLineHeightDropdownOpen, setIsLineHeightDropdownOpen] = useState(false);
+  const [isTableDropdownOpen, setIsTableDropdownOpen] = useState(false);
+  const [gridHover, setGridHover] = useState<{ rows: number; cols: number }>({ rows: 3, cols: 3 });
+  const [includeHeaderRow, setIncludeHeaderRow] = useState(true);
 
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const imageDropdownRef = useRef<HTMLDivElement>(null);
   const caseDropdownRef = useRef<HTMLDivElement>(null);
   const lineHeightDropdownRef = useRef<HTMLDivElement>(null);
+  const tableDropdownRef = useRef<HTMLDivElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   // Local re-render trigger based on editor state changes - throttled via requestAnimationFrame for silky smooth typing
@@ -110,6 +112,11 @@ const Ribbon: React.FC<RibbonProps> = ({
 
   const insertTable = () => {
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  };
+
+  const insertCustomTable = (rows: number, cols: number, withHeaderRow: boolean) => {
+    editor.chain().focus().insertTable({ rows, cols, withHeaderRow }).run();
+    setIsTableDropdownOpen(false);
   };
 
   const insertImage = () => {
@@ -699,9 +706,75 @@ const Ribbon: React.FC<RibbonProps> = ({
       {/* Insert Group */}
       <div className={styles.ribbonGroup}>
         <div className={styles.buttonRow}>
-          <button className={styles.ribbonBtn} onClick={insertTable} title="Indsæt tabel (3x3)">
-            <TableIcon size={16} />
-          </button>
+          {/* Table Dropdown with Grid Matrix Picker */}
+          <div className={styles.exportDropdownContainer} ref={tableDropdownRef}>
+            <button 
+              className={`${styles.ribbonBtn} ${isTableDropdownOpen ? styles.activeBtn : ''}`} 
+              onClick={() => setIsTableDropdownOpen(prev => !prev)} 
+              title="Indsæt tabel (vælg dimensioner)"
+            >
+              <TableIcon size={16} />
+              <ChevronDown size={10} className={styles.dropdownCaret} />
+            </button>
+
+            <PortalDropdown
+              isOpen={isTableDropdownOpen}
+              onClose={() => setIsTableDropdownOpen(false)}
+              triggerRef={tableDropdownRef}
+              minWidth="230px"
+            >
+              <div className={styles.gridPickerContainer}>
+                <div className={styles.gridPickerHeader}>
+                  <span className={styles.gridPickerTitle}>
+                    {gridHover.rows} × {gridHover.cols} Tabel
+                  </span>
+                </div>
+                
+                <div 
+                  className={styles.gridMatrix}
+                  onMouseLeave={() => setGridHover({ rows: 3, cols: 3 })}
+                >
+                  {Array.from({ length: 8 }).map((_, rIndex) => (
+                    <div key={rIndex} className={styles.gridRow}>
+                      {Array.from({ length: 8 }).map((_, cIndex) => {
+                        const row = rIndex + 1;
+                        const col = cIndex + 1;
+                        const isHighlighted = row <= gridHover.rows && col <= gridHover.cols;
+                        return (
+                          <div
+                            key={cIndex}
+                            className={`${styles.gridCell} ${isHighlighted ? styles.gridCellActive : ''}`}
+                            onMouseEnter={() => setGridHover({ rows: row, cols: col })}
+                            onClick={() => insertCustomTable(row, col, includeHeaderRow)}
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+
+                <label className={styles.gridHeaderToggle}>
+                  <input
+                    type="checkbox"
+                    checked={includeHeaderRow}
+                    onChange={(e) => setIncludeHeaderRow(e.target.checked)}
+                  />
+                  <span>Overskriftsrække</span>
+                </label>
+
+                <div className={styles.dropdownDivider} />
+
+                <button
+                  type="button"
+                  className={styles.exportMenuItem}
+                  onClick={() => insertCustomTable(3, 3, includeHeaderRow)}
+                >
+                  <TableIcon size={14} />
+                  <span>Standard (3 × 3)</span>
+                </button>
+              </div>
+            </PortalDropdown>
+          </div>
 
           {/* Image Upload Dropdown & Hidden File Input */}
           <input 
@@ -774,82 +847,7 @@ const Ribbon: React.FC<RibbonProps> = ({
         <span className={styles.groupLabel}>Indsæt</span>
       </div>
 
-      {/* Dynamic Table Tools Group (Visible when cursor is in a table) */}
-      {editor.isActive('table') && (
-        <div className={`${styles.ribbonGroup} ${styles.tableActiveGroup}`}>
-          <div className={styles.buttonRow}>
-            {/* Rows controls */}
-            <button 
-              className={styles.ribbonBtn} 
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-              title="Tilføj række over"
-            >
-              <ArrowUpToLine size={15} />
-            </button>
-            <button 
-              className={styles.ribbonBtn} 
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-              title="Tilføj række under"
-            >
-              <ArrowDownToLine size={15} />
-            </button>
-            <button 
-              className={`${styles.ribbonBtn} ${styles.dangerBtn}`} 
-              onClick={() => editor.chain().focus().deleteRow().run()}
-              title="Slet række"
-            >
-              <MinusCircle size={15} />
-            </button>
 
-            <div className={styles.ribbonDivider} />
-
-            {/* Columns controls */}
-            <button 
-              className={styles.ribbonBtn} 
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-              title="Tilføj kolonne til venstre"
-            >
-              <ArrowLeftToLine size={15} />
-            </button>
-            <button 
-              className={styles.ribbonBtn} 
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-              title="Tilføj kolonne til højre"
-            >
-              <ArrowRightToLine size={15} />
-            </button>
-            <button 
-              className={`${styles.ribbonBtn} ${styles.dangerBtn}`} 
-              onClick={() => editor.chain().focus().deleteColumn().run()}
-              title="Slet kolonne"
-            >
-              <MinusSquare size={15} />
-            </button>
-
-            <div className={styles.ribbonDivider} />
-
-            {/* Cell background color */}
-            <input 
-              type="color" 
-              className={styles.colorPicker}
-              title="Cellens baggrundsfarve"
-              onChange={(e) => editor.chain().focus().setCellAttribute('backgroundColor', e.target.value).run()}
-            />
-
-            <div className={styles.ribbonDivider} />
-
-            {/* Delete entire table */}
-            <button 
-              className={`${styles.ribbonBtn} ${styles.dangerBtn}`} 
-              onClick={() => editor.chain().focus().deleteTable().run()}
-              title="Slet hele tabellen"
-            >
-              <Trash2 size={15} />
-            </button>
-          </div>
-          <span className={`${styles.groupLabel} ${styles.tableLabel}`}>Tabel</span>
-        </div>
-      )}
 
       {/* Tema Group */}
       <div className={styles.ribbonGroup}>

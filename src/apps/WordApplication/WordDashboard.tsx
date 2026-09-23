@@ -6,7 +6,8 @@ import {
   Printer, FileDown, Globe, FileCode, Eye,
   Copy, Tag, RotateCcw, Trash, Palette, Users, Briefcase, Mail, FileCheck, Sparkles,
   MoreVertical, ExternalLink, Archive, History,
-  HardDrive, FolderOpen, CheckCircle2, CloudOff, Cloud
+  HardDrive, FolderOpen, CheckCircle2, CloudOff, Cloud,
+  LayoutGrid, List
 } from 'lucide-react';
 import { 
   getDocuments, getDocument, createDocument, deleteDocument, 
@@ -64,6 +65,23 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isServerOnline, setIsServerOnline] = useState<boolean | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    try {
+      const saved = localStorage.getItem('mitEgetWord_dashboardViewMode');
+      return saved === 'list' || saved === 'grid' ? saved : 'grid';
+    } catch {
+      return 'grid';
+    }
+  });
+
+  const handleSetViewMode = (mode: 'grid' | 'list') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('mitEgetWord_dashboardViewMode', mode);
+    } catch {
+      // ignore
+    }
+  };
   
   // Local files and offline sync states
   const localFileInputRef = useRef<HTMLInputElement>(null);
@@ -1050,6 +1068,179 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
     );
   };
 
+  // Render list view table header (Google Drive-style)
+  const renderListHeader = () => (
+    <div className={styles.docsListHeader}>
+      <div className={styles.docsListHeaderName}>Navn</div>
+      <div className={styles.docsListHeaderDate}>Sidst ændret</div>
+      <div className={styles.docsListHeaderOwner}>Ejer</div>
+      <div className={styles.docsListHeaderLocation}>Placering</div>
+      <div className={styles.docsListHeaderActions} />
+    </div>
+  );
+
+  // Render document row (aflangt kort i Google Drive-stil)
+  const renderDocRow = (doc: DocumentItem, keyPrefix = '') => {
+    const isDragging = draggedDocId === doc.id;
+    const fName = getFolderName(doc.folderId);
+    const isInTrash = !!doc.inTrash;
+    const isDocx = (doc.title || '').toLowerCase().endsWith('.docx');
+
+    return (
+      <div
+        key={keyPrefix ? `${keyPrefix}-${doc.id}` : doc.id}
+        className={`${styles.docRow} ${isDragging ? styles.docRowDragging : ''} ${isInTrash ? styles.docRowInTrash : ''}`}
+        onClick={() => {
+          handleOpenDocSafely(doc);
+        }}
+        onContextMenu={(e) => handleDocContextMenu(e, doc)}
+        draggable={!isInTrash}
+        onDragStart={(e) => {
+          if (isInTrash) return;
+          e.dataTransfer.setData('text/plain', doc.id);
+          e.dataTransfer.effectAllowed = 'move';
+          setDraggedDocId(doc.id);
+        }}
+        onDragEnd={() => {
+          setDraggedDocId(null);
+          setDragOverFolderId(null);
+        }}
+        style={{
+          borderLeft: doc.color ? `3px solid ${doc.color}` : undefined
+        }}
+        title={isInTrash ? `"${doc.title}" (Højreklik for valgmuligheder)` : `Åbn "${doc.title || 'Navnløst dokument'}" (Højreklik for indstillinger)`}
+      >
+        {/* Name Column: Icon, Title, Favorite, Tags */}
+        <div className={styles.docRowNameCol}>
+          <div 
+            className={styles.docRowIconWrap}
+            style={{ color: doc.color || (isDocx ? '#4a90e2' : '#4285f4') }}
+          >
+            <FileText size={18} />
+          </div>
+
+          <div className={styles.docRowTitleWrapper}>
+            <span className={styles.docRowTitleText} title={doc.title || 'Navnløst dokument'}>
+              {doc.title || 'Navnløst dokument'}
+            </span>
+
+            {/* Favorite Star Button right next to title */}
+            {!isInTrash && (
+              <button
+                type="button"
+                className={`${styles.docRowFavBtn} ${doc.isFavorite ? styles.isFav : ''}`}
+                onClick={(e) => handleToggleFavorite(e, doc.id)}
+                title={doc.isFavorite ? 'Fjern fra favoritter' : 'Marker som favorit'}
+              >
+                <Star
+                  size={14}
+                  fill={doc.isFavorite ? '#f1c40f' : 'none'}
+                  stroke={doc.isFavorite ? '#f1c40f' : 'currentColor'}
+                />
+              </button>
+            )}
+
+            {/* Tags row next to title */}
+            {Array.isArray(doc.tags) && doc.tags.filter(t => t.toLowerCase() !== 'lokal').length > 0 && !isInTrash && (
+              <div className={styles.docRowTagsWrapper}>
+                {doc.tags.filter(t => t.toLowerCase() !== 'lokal').map(tag => (
+                  <span
+                    key={tag}
+                    className={styles.docRowTagPill}
+                    style={{
+                      backgroundColor: doc.color ? `${doc.color}22` : undefined,
+                      borderColor: doc.color ? `${doc.color}55` : undefined,
+                      color: doc.color || undefined
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Date / Activity Column */}
+        <div className={styles.docRowDateCol}>
+          <span className={styles.docRowDateText}>
+            {isInTrash 
+              ? `Slettet ${formatDate(doc.deletedAt)}` 
+              : `Redigeret • ${formatDate(doc.updatedAt)}`}
+          </span>
+        </div>
+
+        {/* Owner / Cloud / Local Column */}
+        <div className={styles.docRowOwnerCol}>
+          <span className={styles.docRowOwnerName}>Mig</span>
+          {!isInTrash && (
+            doc.syncStatus === 'pending_upload' ? (
+              <span className={styles.docRowStorageBadge} title="Afventer synkronisering">
+                <RotateCw size={12} className={styles.spinningSyncIcon} color="#f59e0b" />
+              </span>
+            ) : doc.isSavedLocally ? (
+              <button
+                type="button"
+                className={styles.docRowStorageBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleSaveLocally(doc);
+                }}
+                title="Gemt lokalt på computeren. Klik for at fjerne lokal kopi"
+              >
+                <HardDrive size={12} color="#10b981" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.docRowStorageBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleSaveLocally(doc);
+                }}
+                title="Gemt på serveren. Klik for at hente en lokal kopi (offline)"
+              >
+                <Cloud size={12} color="#94a3b8" />
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Location Column */}
+        <div className={styles.docRowLocationCol}>
+          <div 
+            className={styles.docRowLocationChip}
+            title={fName ? `Placeret i mappen "${getFolderFullPath(doc.folderId)}"` : 'Placeret i roden'}
+            onClick={(e) => {
+              if (doc.folderId) {
+                e.stopPropagation();
+                setCurrentFolderId(doc.folderId);
+              }
+            }}
+          >
+            <Folder size={13} color="#4a90e2" />
+            <span className={styles.docRowLocationText}>{fName || 'Mit drev'}</span>
+          </div>
+        </div>
+
+        {/* Actions Column */}
+        <div className={styles.docRowActionsCol}>
+          <button
+            type="button"
+            className={styles.docRowMoreBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDocContextMenu(e, doc);
+            }}
+            title="Indstillinger (eller højreklik)"
+          >
+            <MoreVertical size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Render folder card with drop support
   const renderFolderCard = (folder: FolderItem) => {
     const docCount = documents.filter(d => d.folderId === folder.id).length;
@@ -1235,6 +1426,25 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
             <RotateCw size={14} />
           </button>
 
+          <div className={styles.viewModeToggle} role="group" aria-label="Visningslayout">
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${viewMode === 'grid' ? styles.viewModeBtnActive : ''}`}
+              onClick={() => handleSetViewMode('grid')}
+              title="Gittervisning (forhåndsvisningskort)"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${viewMode === 'list' ? styles.viewModeBtnActive : ''}`}
+              onClick={() => handleSetViewMode('list')}
+              title="Listevisning (aflange kort som Google Drive)"
+            >
+              <List size={15} />
+            </button>
+          </div>
+
           <input
             type="file"
             ref={localFileInputRef}
@@ -1302,9 +1512,18 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
             </div>
 
             {favoriteDocuments.length > 0 ? (
-              <div className={styles.docsGrid}>
-                {favoriteDocuments.map(doc => renderDocCard(doc, 'fav-only'))}
-              </div>
+              viewMode === 'grid' ? (
+                <div className={styles.docsGrid}>
+                  {favoriteDocuments.map(doc => renderDocCard(doc, 'fav-only'))}
+                </div>
+              ) : (
+                <div className={styles.docsListContainer}>
+                  {renderListHeader()}
+                  <div className={styles.docsListRows}>
+                    {favoriteDocuments.map(doc => renderDocRow(doc, 'fav-only'))}
+                  </div>
+                </div>
+              )
             ) : (
               <div className={styles.emptyState}>
                 <AlertCircle size={36} color="#666666" />
@@ -1331,9 +1550,18 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
             </div>
 
             {allFilteredDocuments.length > 0 ? (
-              <div className={styles.docsGrid}>
-                {allFilteredDocuments.map(doc => renderDocCard(doc, 'recent'))}
-              </div>
+              viewMode === 'grid' ? (
+                <div className={styles.docsGrid}>
+                  {allFilteredDocuments.map(doc => renderDocCard(doc, 'recent'))}
+                </div>
+              ) : (
+                <div className={styles.docsListContainer}>
+                  {renderListHeader()}
+                  <div className={styles.docsListRows}>
+                    {allFilteredDocuments.map(doc => renderDocRow(doc, 'recent'))}
+                  </div>
+                </div>
+              )
             ) : (
               <div className={styles.emptyState}>
                 <AlertCircle size={36} color="#666666" />
@@ -1372,9 +1600,18 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
             </div>
 
             {trashDocs.length > 0 ? (
-              <div className={styles.docsGrid}>
-                {allFilteredDocuments.map(doc => renderDocCard(doc, 'trash-tab'))}
-              </div>
+              viewMode === 'grid' ? (
+                <div className={styles.docsGrid}>
+                  {allFilteredDocuments.map(doc => renderDocCard(doc, 'trash-tab'))}
+                </div>
+              ) : (
+                <div className={styles.docsListContainer}>
+                  {renderListHeader()}
+                  <div className={styles.docsListRows}>
+                    {allFilteredDocuments.map(doc => renderDocRow(doc, 'trash-tab'))}
+                  </div>
+                </div>
+              )
             ) : (
               <div className={styles.emptyState}>
                 <Trash2 size={40} color="#666666" />
@@ -1447,9 +1684,18 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
             </div>
 
             {allFilteredDocuments.length > 0 ? (
-              <div className={styles.docsGrid}>
-                {allFilteredDocuments.map(doc => renderDocCard(doc, 'local-tab'))}
-              </div>
+              viewMode === 'grid' ? (
+                <div className={styles.docsGrid}>
+                  {allFilteredDocuments.map(doc => renderDocCard(doc, 'local-tab'))}
+                </div>
+              ) : (
+                <div className={styles.docsListContainer}>
+                  {renderListHeader()}
+                  <div className={styles.docsListRows}>
+                    {allFilteredDocuments.map(doc => renderDocRow(doc, 'local-tab'))}
+                  </div>
+                </div>
+              )
             ) : (
               <div className={styles.emptyState}>
                 <HardDrive size={40} color="#666666" />
@@ -1615,9 +1861,18 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
                     {folderFavorites.length} {folderFavorites.length === 1 ? 'dokument' : 'dokumenter'}
                   </span>
                 </div>
-                <div className={styles.docsGrid}>
-                  {folderFavorites.map(doc => renderDocCard(doc, 'folder-fav'))}
-                </div>
+                {viewMode === 'grid' ? (
+                  <div className={styles.docsGrid}>
+                    {folderFavorites.map(doc => renderDocCard(doc, 'folder-fav'))}
+                  </div>
+                ) : (
+                  <div className={styles.docsListContainer}>
+                    {renderListHeader()}
+                    <div className={styles.docsListRows}>
+                      {folderFavorites.map(doc => renderDocRow(doc, 'folder-fav'))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1630,34 +1885,69 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
                 </span>
               </div>
 
-              <div className={styles.docsGrid}>
-                {!searchQuery && (
-                  <div 
-                    className={styles.createCard} 
-                    onClick={handleCreateNew}
-                    title="Opret et nyt tomt dokument i denne mappe"
-                  >
-                    <div className={styles.createIconCircle}>
-                      <Plus size={22} />
+              {viewMode === 'grid' ? (
+                <div className={styles.docsGrid}>
+                  {!searchQuery && (
+                    <div 
+                      className={styles.createCard} 
+                      onClick={handleCreateNew}
+                      title="Opret et nyt tomt dokument i denne mappe"
+                    >
+                      <div className={styles.createIconCircle}>
+                        <Plus size={22} />
+                      </div>
+                      <span className={styles.createCardTitle}>Nyt tomt dokument</span>
                     </div>
-                    <span className={styles.createCardTitle}>Nyt tomt dokument</span>
-                  </div>
-                )}
+                  )}
 
-                {folderNonFavorites.map(doc => renderDocCard(doc, 'folder-doc'))}
+                  {folderNonFavorites.map(doc => renderDocCard(doc, 'folder-doc'))}
 
-                {folderDocuments.length === 0 && filteredCurrentSubfolders.length === 0 && (
-                  <div className={styles.emptyState} style={{ gridColumn: '1 / -1' }}>
-                    <Folder size={36} color="#666666" />
-                    <h3>Denne mappe er tom</h3>
-                    <p>
-                      {searchQuery 
-                        ? `Der er ingen dokumenter eller undermapper, der matcher "${searchQuery}".` 
-                        : 'Klik på "+ Opret undermappe" eller "Nyt tomt dokument" for at komme i gang.'}
-                    </p>
+                  {folderDocuments.length === 0 && filteredCurrentSubfolders.length === 0 && (
+                    <div className={styles.emptyState} style={{ gridColumn: '1 / -1' }}>
+                      <Folder size={36} color="#666666" />
+                      <h3>Denne mappe er tom</h3>
+                      <p>
+                        {searchQuery 
+                          ? `Der er ingen dokumenter eller undermapper, der matcher "${searchQuery}".` 
+                          : 'Klik på "+ Opret undermappe" eller "Nyt tomt dokument" for at komme i gang.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className={styles.docsListContainer}>
+                  {renderListHeader()}
+
+                  {!searchQuery && (
+                    <div 
+                      className={styles.createListRow}
+                      onClick={handleCreateNew}
+                      title="Opret et nyt tomt dokument i denne mappe"
+                    >
+                      <div className={styles.createListRowIcon}>
+                        <Plus size={16} />
+                      </div>
+                      <span className={styles.createListRowTitle}>Nyt tomt dokument</span>
+                    </div>
+                  )}
+
+                  <div className={styles.docsListRows}>
+                    {folderNonFavorites.map(doc => renderDocRow(doc, 'folder-doc'))}
                   </div>
-                )}
-              </div>
+
+                  {folderDocuments.length === 0 && filteredCurrentSubfolders.length === 0 && (
+                    <div className={styles.emptyState}>
+                      <Folder size={36} color="#666666" />
+                      <h3>Denne mappe er tom</h3>
+                      <p>
+                        {searchQuery 
+                          ? `Der er ingen dokumenter eller undermapper, der matcher "${searchQuery}".` 
+                          : 'Klik på "+ Opret undermappe" eller "Nyt tomt dokument" for at komme i gang.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -1733,9 +2023,18 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
                     {favoriteDocuments.length} {favoriteDocuments.length === 1 ? 'dokument' : 'dokumenter'}
                   </span>
                 </div>
-                <div className={styles.docsGrid}>
-                  {favoriteDocuments.map(doc => renderDocCard(doc, 'fav-section'))}
-                </div>
+                {viewMode === 'grid' ? (
+                  <div className={styles.docsGrid}>
+                    {favoriteDocuments.map(doc => renderDocCard(doc, 'fav-section'))}
+                  </div>
+                ) : (
+                  <div className={styles.docsListContainer}>
+                    {renderListHeader()}
+                    <div className={styles.docsListRows}>
+                      {favoriteDocuments.map(doc => renderDocRow(doc, 'fav-section'))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1786,36 +2085,71 @@ export const WordDashboard: React.FC<WordDashboardProps> = ({ onOpenDocument, pa
                 </span>
               </div>
 
-              <div className={styles.docsGrid}>
-                {/* "Nyt tomt dokument" Card as first item if not searching */}
-                {!searchQuery && (
-                  <div 
-                    className={styles.createCard} 
-                    onClick={handleCreateNew}
-                    title="Opret et nyt tomt dokument"
-                  >
-                    <div className={styles.createIconCircle}>
-                      <Plus size={22} />
+              {viewMode === 'grid' ? (
+                <div className={styles.docsGrid}>
+                  {/* "Nyt tomt dokument" Card as first item if not searching */}
+                  {!searchQuery && (
+                    <div 
+                      className={styles.createCard} 
+                      onClick={handleCreateNew}
+                      title="Opret et nyt tomt dokument"
+                    >
+                      <div className={styles.createIconCircle}>
+                        <Plus size={22} />
+                      </div>
+                      <span className={styles.createCardTitle}>Nyt tomt dokument</span>
                     </div>
-                    <span className={styles.createCardTitle}>Nyt tomt dokument</span>
-                  </div>
-                )}
+                  )}
 
-                {displayedRootOrSearchDocuments.map(doc => renderDocCard(doc, 'doc-section'))}
+                  {displayedRootOrSearchDocuments.map(doc => renderDocCard(doc, 'doc-section'))}
 
-                {/* Show empty state only if there are no documents matching search or no documents at all */}
-                {allFilteredDocuments.length === 0 && filteredSearchFolders.length === 0 && (
-                  <div className={styles.emptyState} style={{ gridColumn: '1 / -1' }}>
-                    <AlertCircle size={36} color="#666666" />
-                    <h3>Ingen resultater fundet</h3>
-                    <p>
-                      {searchQuery 
-                        ? `Der er ingen dokumenter eller mapper, der matcher "${searchQuery}".` 
-                        : 'Der er ingen dokumenter endnu. Klik på "Nyt tomt dokument" for at komme i gang.'}
-                    </p>
+                  {/* Show empty state only if there are no documents matching search or no documents at all */}
+                  {allFilteredDocuments.length === 0 && filteredSearchFolders.length === 0 && (
+                    <div className={styles.emptyState} style={{ gridColumn: '1 / -1' }}>
+                      <AlertCircle size={36} color="#666666" />
+                      <h3>Ingen resultater fundet</h3>
+                      <p>
+                        {searchQuery 
+                          ? `Der er ingen dokumenter eller mapper, der matcher "${searchQuery}".` 
+                          : 'Der er ingen dokumenter endnu. Klik på "Nyt tomt dokument" for at komme i gang.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className={styles.docsListContainer}>
+                  {renderListHeader()}
+
+                  {!searchQuery && (
+                    <div 
+                      className={styles.createListRow} 
+                      onClick={handleCreateNew}
+                      title="Opret et nyt tomt dokument"
+                    >
+                      <div className={styles.createListRowIcon}>
+                        <Plus size={16} />
+                      </div>
+                      <span className={styles.createListRowTitle}>Nyt tomt dokument</span>
+                    </div>
+                  )}
+
+                  <div className={styles.docsListRows}>
+                    {displayedRootOrSearchDocuments.map(doc => renderDocRow(doc, 'doc-section'))}
                   </div>
-                )}
-              </div>
+
+                  {allFilteredDocuments.length === 0 && filteredSearchFolders.length === 0 && (
+                    <div className={styles.emptyState}>
+                      <AlertCircle size={36} color="#666666" />
+                      <h3>Ingen resultater fundet</h3>
+                      <p>
+                        {searchQuery 
+                          ? `Der er ingen dokumenter eller mapper, der matcher "${searchQuery}".` 
+                          : 'Der er ingen dokumenter endnu. Klik på "Nyt tomt dokument" for at komme i gang.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}

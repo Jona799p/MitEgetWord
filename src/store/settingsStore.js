@@ -38,6 +38,9 @@ export const DEFAULT_PROMPTS = {
   toolInstructions: `[VÆRKTØJER TIL DOKUMENTREDIGERING]
 Du har adgang til følgende værktøjer til at redigere i det åbne Word-dokument. Dokumentets indhold leveres til dig som struktureret Markdown med overskrifter (#, ##, ###), afsnit adskilt med tomme linjer, fed (**tekst**), kursiv (*tekst*) og lister (- punkt):
 
+VIGTIG REGEL FOR FORMATERING:
+Når du opretter eller retter lister (fx punktlister eller nummererede lister), skal du analysere dokumentet og altid bruge præcis samme form for punktliste (fx - eller *) og listetype, som brugeren allerede anvender!
+
 1. replace_entire_document:
    - new_content: Det fulde, opdaterede dokumentindhold i struktureret format (med overskrifter '#' / '##', afsnit adskilt med tomme linjer, punkttegn osv.).
    * BRUG DETTE VÆRKTØJ når der IKKE er markeret tekst, og brugeren beder om at:
@@ -79,13 +82,17 @@ Du har adgang til følgende værktøjer til at redigere i det åbne Word-dokumen
 7. insert_text:
    - text: Tekst der skal indsættes i det aktive dokument ved markørens position.
 
+8. reply_to_user:
+   - message: Det direkte, skriftlige svar til brugeren.
+   * BRUG DETTE VÆRKTØJ når du har brug for at tale direkte til brugeren (fx for at besvare et spørgsmål) UDEN at indsætte eller ændre noget i selve dokumentet. Svaret vises som en talebobel på skærmen.
+
 Hvis værktøjskald ikke er direkte tilgængelige som API-funktioner, returner en JSON-blok:
 \`\`\`json
 {"tool": "replace_text", "args": {"exact_text_to_replace": "tekst der skal slettes", "new_text": ""}}
 \`\`\`
 eller
 \`\`\`json
-{"tool": "replace_entire_document", "args": {"new_content": "opdateret dokumentindhold her"}}
+{"tool": "reply_to_user", "args": {"message": "Dette er mit skriftlige svar til dig."}}
 \`\`\``,
   dashboardPromptTemplate: `Du er en hjælpsom AI-assistent i et tekstbehandlingsprogram. Brugeren er på forsiden og leder efter et dokument.
 Her er en liste over alle brugerens dokumenter:
@@ -264,7 +271,7 @@ export const getSettings = () => {
         current.systemInstructions = DEFAULT_PROMPTS.systemInstructions;
       }
       // Opgrader legacy toolInstructions
-      if (!current.toolInstructions || current.toolInstructions.includes('[VÆRKTØJ: SKRIV I DOKUMENT]') || !current.toolInstructions.includes('replace_selected_text') || !current.toolInstructions.includes('replace_entire_document') || !current.toolInstructions.includes('VIGTIGT KRAV: Virker KUN')) {
+      if (!current.toolInstructions || current.toolInstructions.includes('[VÆRKTØJ: SKRIV I DOKUMENT]') || !current.toolInstructions.includes('replace_selected_text') || !current.toolInstructions.includes('replace_entire_document') || !current.toolInstructions.includes('VIGTIGT KRAV: Virker KUN') || !current.toolInstructions.includes('reply_to_user')) {
         current.toolInstructions = DEFAULT_PROMPTS.toolInstructions;
       }
     }

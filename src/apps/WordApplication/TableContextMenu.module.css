@@ -1,0 +1,247 @@
+.contextMenuBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99998;
+  background: transparent;
+}
+
+.menuContainer {
+  position: fixed;
+  z-index: 99999;
+  width: 250px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 3px 10px rgba(0, 0, 0, 0.2);
+  padding: 6px;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  color: var(--text-primary);
+  user-select: none;
+  animation: menuAppear 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@keyframes menuAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.menuHeader {
+  padding: 6px 8px 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerIcon {
+  color: var(--primary-accent);
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 3px 0;
+}
+
+.sectionLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 4px 8px 2px 8px;
+  font-weight: 600;
+}
+
+.compactGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 3px;
+  padding: 2px 4px;
+}
+
+.compactBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  user-select: none;
+}
+
+.compactBtn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--border-active);
+  color: #ffffff;
+}
+
+.compactBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.compactBtnDanger {
+  color: #f87171;
+}
+
+.compactBtnDanger:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #fca5a5 !important;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.1s ease, color 0.1s ease;
+  box-sizing: border-box;
+}
+
+.menuItem:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+.menuItem:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.menuItemDanger {
+  color: #f87171;
+}
+
+.menuItemDanger:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.menuItemIcon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.menuItem:hover:not(:disabled) .menuItemIcon {
+  color: var(--text-primary);
+}
+
+.menuItemDanger .menuItemIcon,
+.menuItemDanger:hover:not(:disabled) .menuItemIcon {
+  color: inherit;
+}
+
+/* Color Palette */
+.colorSection {
+  padding: 3px 6px 6px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.swatchesRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.colorSwatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  flex-shrink: 0;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.15);
+  border-color: var(--text-primary);
+  z-index: 1;
+}
+
+.customColorBtn {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.customColorBtn input[type="color"] {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 42px;
+  height: 42px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.resetColorBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.resetColorBtn:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}

@@ -158,19 +158,7 @@
   margin: 0 4px;
 }
 
-.tableActiveGroup {
-  background: var(--primary-accent-glow);
-  border: 1px solid var(--primary-accent);
-  border-radius: 8px;
-  padding: 4px 10px;
-  margin: 0 2px;
-  animation: fadeIn 0.15s ease-out;
-}
 
-.tableLabel {
-  color: var(--primary-accent);
-  font-weight: 700;
-}
 
 .headingBtn {
   font-size: 11px;
@@ -554,61 +542,64 @@
   box-sizing: border-box;
 }
 
-/* Document Suggestion Mark in ProseMirror - Google Docs Style */
+/* Document Suggestion Mark in ProseMirror - Minimalist Elegant Style */
 :global(.document-suggestion-mark) {
   cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 1px 2px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  padding: 0 1px;
   border-radius: 2px;
+  margin: 0 !important;
 }
 
-/* Deletion: Red strikethrough (what was before) */
+/* Deletion: Soft muted rose strikethrough */
 :global(.document-suggestion-mark.suggestion-deletion) {
-  color: #f87171 !important;
+  color: inherit !important;
   text-decoration: line-through !important;
-  background-color: rgba(239, 68, 68, 0.16) !important;
-  border-bottom: 2px solid rgba(239, 68, 68, 0.5) !important;
-  margin-right: 2px;
+  text-decoration-color: rgba(225, 112, 128, 0.7) !important;
+  background-color: rgba(225, 112, 128, 0.15) !important;
+  border-bottom: 1px dashed rgba(225, 112, 128, 0.3) !important;
+  margin: 0 !important;
 }
 
 :global(.lightTheme) :global(.document-suggestion-mark.suggestion-deletion) {
-  color: #dc2626 !important;
-  background-color: rgba(239, 68, 68, 0.12) !important;
-  border-bottom-color: #dc2626 !important;
+  color: inherit !important;
+  text-decoration-color: rgba(200, 90, 105, 0.7) !important;
+  background-color: rgba(200, 90, 105, 0.1) !important;
+  border-bottom: 1px dashed rgba(200, 90, 105, 0.3) !important;
 }
 
-/* Addition: Green underline (what was added) */
+/* Addition: Soft muted sage/emerald underline */
 :global(.document-suggestion-mark.suggestion-addition) {
-  color: #4ade80 !important;
-  text-decoration: underline !important;
-  background-color: rgba(34, 197, 94, 0.16) !important;
-  border-bottom: 2px solid rgba(34, 197, 94, 0.5) !important;
-  margin-left: 1px;
+  color: inherit !important;
+  text-decoration: none !important;
+  background-color: rgba(120, 185, 140, 0.15) !important;
+  border-bottom: 2px solid rgba(120, 185, 140, 0.5) !important;
+  margin: 0 !important;
 }
 
 :global(.lightTheme) :global(.document-suggestion-mark.suggestion-addition) {
-  color: #16a34a !important;
-  background-color: rgba(34, 197, 94, 0.12) !important;
-  border-bottom-color: #16a34a !important;
+  color: inherit !important;
+  text-decoration: none !important;
+  background-color: rgba(100, 160, 120, 0.15) !important;
+  border-bottom: 2px solid rgba(100, 160, 120, 0.5) !important;
 }
 
 /* Hover and active states */
 :global(.document-suggestion-mark:hover),
 :global(.document-suggestion-mark.document-suggestion-hover) {
-  filter: brightness(1.15);
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
 }
 
 :global(.document-suggestion-mark.suggestion-deletion:hover),
 :global(.document-suggestion-mark.suggestion-deletion.document-suggestion-hover) {
-  background-color: rgba(239, 68, 68, 0.28) !important;
-  border-bottom-color: #ef4444 !important;
+  background-color: rgba(225, 112, 128, 0.25) !important;
+  border-bottom-color: rgba(225, 112, 128, 0.6) !important;
 }
 
 :global(.document-suggestion-mark.suggestion-addition:hover),
 :global(.document-suggestion-mark.suggestion-addition.document-suggestion-hover) {
-  background-color: rgba(34, 197, 94, 0.28) !important;
-  border-bottom-color: #22c55e !important;
+  background-color: rgba(120, 185, 140, 0.25) !important;
+  border-bottom-color: rgba(120, 185, 140, 0.7) !important;
 }
 
 @keyframes pulseHighlight {
@@ -875,32 +866,88 @@
   font-style: italic;
 }
 
+/* PROSEMIRROR TABLE & GRID SYSTEM */
+.editorContent :global(.ProseMirror) .tableWrapper {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  padding-bottom: 4px;
+}
+
 .editorContent :global(.ProseMirror) table {
   border-collapse: collapse;
   table-layout: fixed;
   width: 100%;
-  margin: 20px 0;
+  margin: 0;
   overflow: hidden;
-  background-color: var(--canvas-page);
-  border: 1px solid var(--canvas-border);
-  border-radius: 4px;
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+}
+
+.lightTheme .editorContent :global(.ProseMirror) table {
+  border-color: rgba(0, 0, 0, 0.18);
 }
 
 .editorContent :global(.ProseMirror) table td,
 .editorContent :global(.ProseMirror) table th {
-  min-width: 1em;
-  border: 1px solid var(--canvas-border);
-  padding: 10px 14px;
+  min-width: 2em;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px 12px;
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
   color: var(--canvas-text);
+  line-height: 1.5;
+}
+
+.lightTheme .editorContent :global(.ProseMirror) table td,
+.lightTheme .editorContent :global(.ProseMirror) table th {
+  border-color: rgba(0, 0, 0, 0.16);
 }
 
 .editorContent :global(.ProseMirror) table th {
-  background-color: var(--bg-hover);
+  background-color: rgba(255, 255, 255, 0.07);
   font-weight: 600;
   color: var(--canvas-text);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.lightTheme .editorContent :global(.ProseMirror) table th {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.25);
+}
+
+/* TipTap Column Resize Handle */
+.editorContent :global(.ProseMirror) table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: var(--primary-accent, #3b82f6);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.editorContent :global(.ProseMirror.resize-cursor) {
+  cursor: col-resize;
+}
+
+/* TipTap Multi-Cell Selection Overlay */
+.editorContent :global(.ProseMirror) table .selectedCell {
+  position: relative;
+}
+
+.editorContent :global(.ProseMirror) table .selectedCell:after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(59, 130, 246, 0.22);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .editorContent :global(.ProseMirror) img {
@@ -909,15 +956,27 @@
   margin: 16px 0;
 }
 
-.editorContent :global(.ProseMirror) ul,
+.editorContent :global(.ProseMirror) ul {
+  list-style-type: disc !important;
+  padding-left: 24px;
+  margin-bottom: 16px;
+  color: var(--canvas-text);
+}
+
 .editorContent :global(.ProseMirror) ol {
+  list-style-type: decimal !important;
   padding-left: 24px;
   margin-bottom: 16px;
   color: var(--canvas-text);
 }
 
 .editorContent :global(.ProseMirror) li {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+.editorContent :global(.ProseMirror) li > p {
+  margin-bottom: 0 !important;
+  line-height: 1.5;
 }
 
 /* Status Bar */
@@ -1168,6 +1227,75 @@
 .exportMenuSub {
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* Table Grid Dimension Picker in Ribbon */
+.gridPickerContainer {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+}
+
+.gridPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gridPickerTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-accent);
+}
+
+.gridMatrix {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+}
+
+.gridRow {
+  display: flex;
+  gap: 3px;
+}
+
+.gridCell {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background-color 0.08s ease, border-color 0.08s ease;
+}
+
+.lightTheme .gridCell {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.gridCellActive {
+  background-color: var(--primary-accent) !important;
+  border-color: var(--primary-accent) !important;
+}
+
+.gridHeaderToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.gridHeaderToggle input[type="checkbox"] {
+  cursor: pointer;
 }
 
 /* Print Media Styles - Clean A4 format for physical print and PDF export */

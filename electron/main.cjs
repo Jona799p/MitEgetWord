@@ -569,6 +569,39 @@ autoUpdater.on('error', (err) => {
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('updater:error', err ? err.message : 'Ukendt fejl'));
 });
 
+// ----------------------------------------------------
+// Vindueskontrol IPC Handlers (Rammeløst vindue)
+// ----------------------------------------------------
+ipcMain.handle('window-minimize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.minimize();
+  return true;
+});
+
+ipcMain.handle('window-maximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+    return win.isMaximized();
+  }
+  return false;
+});
+
+ipcMain.handle('window-close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+  return true;
+});
+
+ipcMain.handle('window-is-maximized', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return win ? win.isMaximized() : false;
+});
+
 function checkDevServer(url) {
   return new Promise((resolve) => {
     const req = http.get(url, (res) => {
@@ -587,8 +620,11 @@ async function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 850,
+    minWidth: 800,
+    minHeight: 500,
     backgroundColor: '#050505',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    frame: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -596,6 +632,14 @@ async function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+
+  // Videresend maksimeringstilstand til renderer
+  win.on('maximize', () => {
+    win.webContents.send('window-maximized-state', true);
+  });
+  win.on('unmaximize', () => {
+    win.webContents.send('window-maximized-state', false);
+  });
 
   // Åbn eksterne links i brugerens standardbrowser
   win.webContents.setWindowOpenHandler(({ url }) => {

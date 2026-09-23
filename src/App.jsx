@@ -5,6 +5,7 @@ import AIPill from './os/components/AIPill';
 import SettingsModal from './os/components/SettingsModal';
 import UpdateNotification from './os/components/UpdateNotification';
 import PanelTitle from './os/components/PanelTitle';
+import WindowControls from './os/components/WindowControls';
 import { WordApplication, WordDashboard } from './apps/WordApplication';
 import { ImTApplication, setImTOpen } from './apps/ImTApplication';
 import { getDocument } from './store/documentStore';
@@ -54,6 +55,7 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
+  const [isWindowMaximized, setIsWindowMaximized] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState('appearance');
   const openSettings = (tab = 'appearance') => {
@@ -673,7 +675,7 @@ function App() {
   return (
     <div 
       ref={workspaceRef}
-      className={`os-workspace ${isDragging ? 'is-resizing' : ''}`} 
+      className={`os-workspace ${isDragging ? 'is-resizing' : ''} ${isWindowMaximized ? 'is-maximized' : ''}`} 
       style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#050505' }}
     >
       {panels.map((panel, index) => {
@@ -697,7 +699,13 @@ function App() {
               }}
               onMouseDownCapture={() => setActivePanelId(panel.id)}
             >
-              <div className="os-panel-header">
+              <div className={`os-panel-header ${index !== panels.length - 1 ? 'has-no-window-controls' : ''}`}>
+                {index === 0 && (
+                  <div className="os-app-brand" title="Mit Eget Word">
+                    <img src="/icon.png" alt="Mit Eget Word" className="os-app-icon" />
+                  </div>
+                )}
+
                 <button 
                   className="os-icon-btn back-btn" 
                   onClick={() => handleGoBack(panel.id)} 
@@ -740,6 +748,10 @@ function App() {
                   <button className="os-icon-btn danger" onClick={() => handleClosePanel(panel.id)} title="Luk vindue">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                   </button>
+                )}
+
+                {index === panels.length - 1 && (
+                  <WindowControls onMaximizedChange={setIsWindowMaximized} />
                 )}
               </div>
               

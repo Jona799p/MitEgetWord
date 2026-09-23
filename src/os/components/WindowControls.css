@@ -1,0 +1,51 @@
+/* ====================================================
+   Windows Fluent Window Controls (Frameless UI)
+   ==================================================== */
+
+.window-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  margin-left: 8px;
+  -webkit-app-region: no-drag !important;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.window-control-btn {
+  width: 46px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  color: var(--text-secondary, #8b949e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  -webkit-app-region: no-drag !important;
+  user-select: none;
+}
+
+.window-control-btn:hover {
+  background-color: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #ffffff);
+}
+
+.window-control-btn:active {
+  background-color: var(--border-active, rgba(255, 255, 255, 0.16));
+}
+
+/* Windows rød hover-effekt på luk-knap */
+.window-control-btn.close-btn:hover {
+  background-color: #e81123 !important;
+  color: #ffffff !important;
+}
+
+.window-control-btn.close-btn:active {
+  background-color: #c4101e !important;
+  color: #ffffff !important;
+}

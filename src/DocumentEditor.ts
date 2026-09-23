@@ -175,6 +175,22 @@ export const GEMINI_TOOL_SCHEMAS: GeminiFunctionDeclaration[] = [
     },
   },
   {
+    name: 'move_selected_text',
+    description:
+      'Moves the currently selected text to a new location in the document. Use this when the user asks to "move" or "flytte" the marked text (e.g. to the top or bottom of the document).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        destination: {
+          type: 'STRING',
+          enum: ['bottom', 'top'],
+          description: 'Where to move the selected text. Use "bottom" for moving to the end of the document, and "top" for the beginning.'
+        },
+      },
+      required: ['destination'],
+    },
+  },
+  {
     name: 'replace_text',
     description:
       'Finds an exact string in the document and replaces it with new_text. Both exact_text_to_replace and new_text are required. To modify the active selection, use replace_selected_text instead.',
@@ -221,6 +237,20 @@ export const GEMINI_TOOL_SCHEMAS: GeminiFunctionDeclaration[] = [
         },
       },
       required: ['text'],
+    },
+  },
+  {
+    name: 'reply_to_user',
+    description: 'Replies directly to the user with a written message in a speech bubble, WITHOUT inserting or changing anything in the document. ONLY use this tool if the user asks a direct question, asks for an explanation, or when a written response is strictly required instead of a document edit.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        message: {
+          type: 'STRING',
+          description: 'The direct, written reply to the user.',
+        },
+      },
+      required: ['message'],
     },
   },
 ];
@@ -296,6 +326,25 @@ export const OPENAI_TOOL_SCHEMAS: OpenAIToolDefinition[] = [
   {
     type: 'function',
     function: {
+      name: 'move_selected_text',
+      description:
+        'Moves the currently selected text to a new location in the document. Use this when the user asks to "move" or "flytte" the marked text (e.g. to the top or bottom of the document).',
+      parameters: {
+        type: 'object',
+        properties: {
+          destination: {
+            type: 'string',
+            enum: ['bottom', 'top'],
+            description: 'Where to move the selected text. Use "bottom" for moving to the end of the document, and "top" for the beginning.'
+          },
+        },
+        required: ['destination'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'replace_text',
       description:
         'Finds an exact string in the document and replaces it with new_text. Both exact_text_to_replace and new_text are required. To modify the active selection, use replace_selected_text instead.',
@@ -348,6 +397,23 @@ export const OPENAI_TOOL_SCHEMAS: OpenAIToolDefinition[] = [
           },
         },
         required: ['text'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reply_to_user',
+      description: 'Replies directly to the user with a written message in a speech bubble, WITHOUT inserting or changing anything in the document. ONLY use this tool if the user asks a direct question, asks for an explanation, or when a written response is strictly required instead of a document edit.',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: {
+            type: 'string',
+            description: 'The direct, written reply to the user.',
+          },
+        },
+        required: ['message'],
       },
     },
   },
@@ -617,9 +683,32 @@ export function tiptapHtmlToMarkdown(html: string): string {
   md = md.replace(/<u[^>]*>([\s\S]*?)<\/u>/gi, '<u>$1</u>');
   md = md.replace(/<(s|strike|del)[^>]*>([\s\S]*?)<\/\1>/gi, '~~$2~~');
 
-  // 3. Lister
-  md = md.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '\n- $1');
-  md = md.replace(/<\/(ul|ol)>/gi, '\n\n');
+  // 3. Lister: Håndter <ol> og <ul> præcist
+  md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, listContent) => {
+    let index = 1;
+    const items: string[] = [];
+    const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    let m;
+    while ((m = liRegex.exec(listContent)) !== null) {
+      const cleanItem = m[1].replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1').trim();
+      if (cleanItem) items.push(`${index++}. ${cleanItem}`);
+    }
+    return items.length > 0 ? `\n\n${items.join('\n')}\n\n` : '';
+  });
+
+  md = md.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_, listContent) => {
+    const items: string[] = [];
+    const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    let m;
+    while ((m = liRegex.exec(listContent)) !== null) {
+      const cleanItem = m[1].replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1').trim();
+      if (cleanItem) items.push(`- ${cleanItem}`);
+    }
+    return items.length > 0 ? `\n\n${items.join('\n')}\n\n` : '';
+  });
+
+  // Eventuelle resterende <li> uden for <ul>/<ol>
+  md = md.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '\n- $1\n');
 
   // 4. Afsnit og linjeskift
   md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '\n\n$1\n\n');
@@ -643,50 +732,93 @@ export function tiptapHtmlToMarkdown(html: string): string {
  * Konverterer Markdown eller rå tekst til strukturerede TipTap HTML-blokke (<p>, <h1>, <h2> osv.).
  * Sikrer at linjeskift bliver til rigtige afsnit, og at tekst ikke utilsigtet arver overskrifts-styling.
  */
+export function formatInline(text: string): string {
+  let escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  escaped = escaped.replace(/__(.*?)__/g, '<strong>$1</strong>');
+  escaped = escaped.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  return escaped;
+}
+
 export function textToTipTapHtml(content: string): string {
   if (!content || typeof content !== 'string') return '';
 
-  // Hvis indholdet allerede er HTML med blok-tags, returner direkte
-  if (/<(p|h[1-6]|ul|ol|li|blockquote|table)[\s>]/i.test(content)) {
-    return content;
+  let normalized = content;
+  // Hvis der findes falske punkttegn i HTML som f.eks. <p>• Tekst</p>, normaliser dem til Markdown lister
+  if (normalized.includes('•')) {
+    normalized = normalized.replace(/<p[^>]*>\s*•\s*([\s\S]*?)<\/p>/gi, '- $1\n');
   }
 
-  const lines = content.split(/\r?\n/);
+  // Hvis indholdet allerede er ren HTML med blok-tags (OG ikke indeholder markdown punkttegn der skal opbygges)
+  if (/<(h[1-6]|ul|ol|blockquote|table)[\s>]/i.test(normalized)) {
+    return normalized;
+  }
+  if (/<p[\s>]/i.test(normalized) && !/^[-*+•\d]/m.test(normalized.replace(/<[^>]+>/g, '').trim())) {
+    return normalized;
+  }
+
+  const lines = normalized.split(/\r?\n/);
   const blocks: string[] = [];
 
-  const formatInline = (text: string): string => {
-    let escaped = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+  let currentListType: 'ul' | 'ol' | null = null;
+  let listItems: string[] = [];
 
-    escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    escaped = escaped.replace(/__(.*?)__/g, '<strong>$1</strong>');
-    escaped = escaped.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
-    return escaped;
+  const flushList = () => {
+    if (currentListType && listItems.length > 0) {
+      blocks.push(`<${currentListType}>${listItems.join('')}</${currentListType}>`);
+      currentListType = null;
+      listItems = [];
+    }
   };
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
+      flushList();
       continue;
     }
 
     const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
+      flushList();
       const level = headingMatch[1].length;
       blocks.push(`<h${level}>${formatInline(headingMatch[2])}</h${level}>`);
       continue;
     }
 
-    const bulletMatch = trimmed.match(/^[\*\-]\s+(.*)$/);
+    // Punktliste: matcher "- ", "* ", "+ ", "• " eller "•"
+    const bulletMatch = trimmed.match(/^[-*+•]\s+(.*)$/) || trimmed.match(/^•\s*(.*)$/);
     if (bulletMatch) {
-      blocks.push(`<p>• ${formatInline(bulletMatch[1])}</p>`);
+      if (currentListType !== 'ul') {
+        flushList();
+        currentListType = 'ul';
+      }
+      listItems.push(`<li><p>${formatInline(bulletMatch[1])}</p></li>`);
       continue;
     }
 
-    blocks.push(`<p>${formatInline(trimmed)}</p>`);
+    // Nummereret liste: matcher "1. ", "1) ", osv.
+    const orderedMatch = trimmed.match(/^\d+[\.\)]\s+(.*)$/);
+    if (orderedMatch) {
+      if (currentListType !== 'ol') {
+        flushList();
+        currentListType = 'ol';
+      }
+      listItems.push(`<li><p>${formatInline(orderedMatch[1])}</p></li>`);
+      continue;
+    }
+
+    // Almindeligt afsnit
+    flushList();
+    const cleanParagraph = trimmed.replace(/^<p[^>]*>/i, '').replace(/<\/p>$/i, '');
+    blocks.push(`<p>${formatInline(cleanParagraph)}</p>`);
   }
+
+  flushList();
 
   return blocks.length > 0 ? blocks.join('') : `<p>${formatInline(content)}</p>`;
 }

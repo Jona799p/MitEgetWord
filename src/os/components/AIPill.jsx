@@ -617,7 +617,7 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
       const isDeleteContentIntent =
         !isFormattingRequest &&
         !isCharacterOnlyCleaning &&
-        /(?:slet|slette|fjern|fjerne|delete|remove|drop|udryd)/i.test(trimmedUserMsg);
+        /(?:slet|slette|fjern|fjerne|delete|remove|drop|udryd|flyt|flytte|move)/i.test(trimmedUserMsg);
 
       // Sikker afvikling af værktøjskald med absolut beskyttelse mod utilsigtet sletning
       const executeToolSafely = (name, rawArgs) => {
@@ -637,6 +637,42 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
             setTimeout(() => setActionError(null), 4000);
             return false;
           }
+        }
+
+        if (toolName === 'move_selected_text') {
+          if (!activeSelection) {
+            setActionError('Ingen aktiv markering at flytte.');
+            setTimeout(() => setActionError(null), 4000);
+            return false;
+          }
+          const destination = args.destination === 'top' ? 'top' : 'bottom';
+          
+          window.dispatchEvent(new CustomEvent('executeEditorTool', {
+            detail: {
+              toolName: 'delete_selected_text',
+              args: {},
+              callback: () => {}
+            }
+          }));
+          
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('executeEditorTool', {
+              detail: {
+                toolName: destination === 'top' ? 'insert_text' : 'append_text',
+                args: { text_to_add: activeSelection, text: activeSelection },
+                callback: (res) => {
+                  if (res.success) {
+                    setActionFeedback('Teksten blev flyttet');
+                    setTimeout(() => setActionFeedback(null), 3500);
+                  } else {
+                    setActionError(res.message || 'Kunne ikke flytte tekst');
+                    setTimeout(() => setActionError(null), 4000);
+                  }
+                }
+              }
+            }));
+          }, 50);
+          return true;
         }
 
         // 2. delete_selected_text
@@ -726,6 +762,12 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
           if (!args.text && args.new_text) {
             args.text = args.new_text;
           }
+        }
+
+        if (toolName === 'reply_to_user') {
+          setDashboardResult(args.message || 'Intet svar angivet.');
+          setIsExpanded(true);
+          return true;
         }
 
         // Tjek om der er et aktivt dokument; hvis ikke, opret et nyt dokument med indholdet
@@ -884,11 +926,12 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
   // Parser der omdanner [Titel](/doc/ID) til rigtige links
   const renderMessage = (text) => {
     if (!text) return null;
-    if (latestResponse?.role === 'error') {
+    const content = typeof text === 'string' ? text : (text?.content || text?.message || '');
+    if (text?.role === 'error' || (content.includes('Indstillinger') && content.toLowerCase().includes('fejl'))) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span>{text}</span>
-          {text.includes('Indstillinger') && (
+          <span>{content}</span>
+          {content.includes('Indstillinger') && (
             <button 
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('openSettings'))}
@@ -914,8 +957,8 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
     const parts = [];
     let lastIndex = 0;
     let match;
-    while ((match = linkRegex.exec(text)) !== null) {
-      parts.push(text.substring(lastIndex, match.index));
+    while ((match = linkRegex.exec(content)) !== null) {
+      parts.push(content.substring(lastIndex, match.index));
       const url = match[2];
       const docId = url.replace('/doc/', '');
       parts.push(
@@ -933,8 +976,8 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
       );
       lastIndex = linkRegex.lastIndex;
     }
-    parts.push(text.substring(lastIndex));
-    return parts.length > 0 ? parts : text;
+    parts.push(content.substring(lastIndex));
+    return parts.length > 0 ? parts : content;
   };
 
   return (
@@ -945,7 +988,7 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
       onMouseLeave={() => {
         if (whisperState.isRecording || whisperState.isTranscribing) return;
         // Luk på hover-out hvis vi ikke har skrevet noget og der ikke er et aktivt svar
-        if (document.activeElement !== inputRef.current && !latestResponse && !input) {
+        if (document.activeElement !== inputRef.current && !dashboardResult && !input) {
           setIsExpanded(false);
         }
       }}
@@ -1033,8 +1076,8 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
         </div>
       )}
 
-      {/* Dashboard resultat (vises kun på forsiden/skrivebordet) */}
-      {isExpanded && isDashboard && dashboardResult && (
+      {/* AI Talebobel / Svar resultat */}
+      {isExpanded && dashboardResult && (
         <div className="ai-dashboard-badge">
           <Sparkles size={13} color="#38bdf8" />
           <div className="ai-dashboard-content">{renderMessage(dashboardResult)}</div>

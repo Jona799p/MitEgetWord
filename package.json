@@ -1,7 +1,7 @@
 {
   "name": "mitegetword",
   "private": true,
-  "version": "1.0.22",
+  "version": "1.0.24",
   "description": "MitEgetWord - Tekstbehandling og AI Hub",
   "author": "Jonas",
   "type": "module",
@@ -68,7 +68,7 @@
     "productName": "MitEgetWord",
     "npmRebuild": false,
     "directories": {
-      "output": "dist-electron"
+      "output": "C:/Users/jonas/MitEgetWord-Builds"
     },
     "files": [
       "dist/**/*",

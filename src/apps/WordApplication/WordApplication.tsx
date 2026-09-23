@@ -16,7 +16,7 @@ import { CustomTextStyle, LineHeightExtension, ClearFormattingExtension, clearFo
 import ResizableImage from './ResizableImage';
 import Link from '@tiptap/extension-link';
 import { ChevronUp, ChevronDown, FileText, History } from 'lucide-react';
-import html2canvas from 'html2canvas';
+
 import { Extension } from '@tiptap/core';
 import { NodeSelection, TextSelection, Selection } from '@tiptap/pm/state';
 import { dropPoint } from '@tiptap/pm/transform';
@@ -41,6 +41,7 @@ import FloatingSuggestionMenu, { SuggestionSubmitData } from './FloatingSuggesti
 import SuggestionsMargin, { SuggestionItem } from './SuggestionsMargin';
 import SpellCheckExtension from './SpellCheckExtension';
 import SpellCheckContextMenu, { SpellCheckMenuData } from './SpellCheckContextMenu';
+import TableContextMenu from './TableContextMenu';
 import { 
   getSettings, checkTextWithLanguageTool, isLanguageToolAvailable,
   isCamelCaseOrAcronym, isInCustomDictionary, addToCustomDictionary, 
@@ -155,6 +156,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
 
   const [isRibbonVisible, setIsRibbonVisible] = useState(true);
   const [isOutlineOpen, setIsOutlineOpen] = useState(true);
+  const [isSuggestionsSidebarOpen, setIsSuggestionsSidebarOpen] = useState(false);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -183,6 +185,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
   const [isSpellChecking, setIsSpellChecking] = useState(false);
   const [spellCheckToast, setSpellCheckToast] = useState<{ message: string; type?: 'info' | 'success' | 'warning' } | null>(null);
   const [spellCheckMenu, setSpellCheckMenu] = useState<SpellCheckMenuData | null>(null);
+  const [tableContextMenu, setTableContextMenu] = useState<{ x: number; y: number } | null>(null);
   const autoSaveTimeoutRef = useRef<any>(null);
   const lastSnapshotContentRef = useRef<string>('');
   const lastSnapshotTimeRef = useRef<number>(Date.now());
@@ -219,6 +222,11 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       }
       if (spellCheckMenu) {
         setSpellCheckMenu(null);
+        e.preventDefault();
+        return;
+      }
+      if (tableContextMenu) {
+        setTableContextMenu(null);
         e.preventDefault();
         return;
       }
@@ -291,37 +299,33 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
   }>({ active: false, format: null });
 
   const captureThumbnail = async (element: HTMLElement): Promise<string | null> => {
-    if (!element) return null;
+    if (!element || !editor) return null;
     try {
+      const textContent = editor.getText();
+      const lines = textContent.split('\n').filter(l => l.trim().length > 0).slice(0, 8);
+      
       let computedBg = window.getComputedStyle(element).backgroundColor;
-      if (!computedBg || computedBg === 'rgba(0, 0, 0, 0)' || computedBg === 'transparent') {
-        const container = element.closest(`.${styles.canvasContainer}`) as HTMLElement | null;
-        if (container) {
-          computedBg = window.getComputedStyle(container).backgroundColor;
-        }
-      }
       if (!computedBg || computedBg === 'rgba(0, 0, 0, 0)' || computedBg === 'transparent') {
         computedBg = themeMode === 'light' ? '#ffffff' : '#0a0c10';
       }
-
-      const canvas = await html2canvas(element, {
-        backgroundColor: computedBg,
-        scale: 0.2,
-        logging: false,
-        useCORS: true,
-        windowWidth: 600,
-        height: Math.min(element.scrollHeight || 400, 400),
-        onclone: (clonedDoc) => {
-          const clonedEl = clonedDoc.querySelector(`.${styles.canvas}`) as HTMLElement;
-          if (clonedEl) {
-            clonedEl.style.transform = 'none';
-            clonedEl.style.padding = '16px';
-            clonedEl.style.backgroundColor = computedBg;
-          }
-        }
-      });
-
-      return canvas.toDataURL('image/jpeg', 0.5);
+      const isDark = computedBg === '#0a0c10' || computedBg === 'rgb(10, 12, 16)';
+      const textColor = isDark ? '#d4d4d4' : '#333333';
+      const titleColor = isDark ? '#ffffff' : '#000000';
+      
+      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+        <rect width="600" height="400" fill="${computedBg}" />
+        <text x="40" y="60" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="${titleColor}">${(title || 'Dokument').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>
+        <line x1="40" y1="85" x2="560" y2="85" stroke="${isDark ? '#333' : '#e0e0e0'}" stroke-width="2" />`;
+        
+      let y = 140;
+      for (const line of lines) {
+        const safeLine = line.substring(0, 60).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        svgContent += `<text x="40" y="${y}" font-family="Arial, sans-serif" font-size="16" fill="${textColor}">${safeLine}...</text>`;
+        y += 30;
+      }
+      svgContent += `</svg>`;
+      
+      return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgContent)));
     } catch (err) {
       console.warn('Fejl ved generering af miniature:', err);
       return null;
@@ -2192,6 +2196,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
 
     if (errorSpan) {
       e.preventDefault();
+      setTableContextMenu(null);
       const errorId = errorSpan.getAttribute('data-error-id') || '';
       const originalText = errorSpan.getAttribute('data-original-text') || errorSpan.textContent || '';
       let replacements: string[] = [];
@@ -2211,8 +2216,42 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       return;
     }
 
-    // Fallback: Tjek ProseMirror position under musen
+    // Tjek om der blev højreklikket i en tabel eller celle
+    const cellEl = target.closest('td, th') as HTMLElement | null;
+    const tableEl = target.closest('table') as HTMLElement | null;
     const posInfo = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
+
+    let isInsideTable = Boolean(cellEl || tableEl);
+    if (!isInsideTable && posInfo && typeof posInfo.pos === 'number') {
+      const { doc } = editor.state;
+      const $pos = doc.resolve(posInfo.pos);
+      for (let d = $pos.depth; d > 0; d--) {
+        if ($pos.node(d).type.name === 'table') {
+          isInsideTable = true;
+          break;
+        }
+      }
+    }
+
+    if (isInsideTable) {
+      e.preventDefault();
+      // Hvis der ikke er en aktiv flercelle-markering (CellSelection), flyt markøren hen i cellen
+      if (posInfo && typeof posInfo.pos === 'number') {
+        const sel = editor.state.selection as any;
+        const isCellSelection = sel && (sel.constructor?.name === 'CellSelection' || sel.$anchorCell);
+        if (!isCellSelection) {
+          editor.commands.setTextSelection(posInfo.pos);
+        }
+      }
+      setSpellCheckMenu(null);
+      setTableContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+      });
+      return;
+    }
+
+    // Fallback: Tjek ProseMirror position under musen for stavefejl
     if (posInfo && typeof posInfo.pos === 'number') {
       const { doc } = editor.state;
       const $pos = doc.resolve(posInfo.pos);
@@ -2220,6 +2259,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       const spellMark = marks.find((m: any) => m.type.name === 'spellCheck');
       if (spellMark && spellMark.attrs.errorId) {
         e.preventDefault();
+        setTableContextMenu(null);
         setSpellCheckMenu({
           x: e.clientX,
           y: e.clientY,
@@ -2233,6 +2273,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
     }
 
     setSpellCheckMenu(null);
+    setTableContextMenu(null);
   }, [editor]);
 
   const handleSelectReplacement = useCallback((errorId: string, replacement: string, originalText?: string) => {
@@ -2432,6 +2473,9 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
     if (spellCheckMenu) {
       setSpellCheckMenu(null);
     }
+    if (tableContextMenu) {
+      setTableContextMenu(null);
+    }
     const target = e.target as HTMLElement;
     const suggestionSpan = target.closest('[data-suggestion-id]') as HTMLElement | null;
     if (suggestionSpan) {
@@ -2440,7 +2484,7 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
         setActiveSuggestionId(sugId);
       }
     }
-  }, [spellCheckMenu]);
+  }, [spellCheckMenu, tableContextMenu]);
 
   // Global shortcuts: Ctrl+S (Save), Alt+1..5 (Headings), Alt+Q (Normal text)
   useEffect(() => {
@@ -2515,9 +2559,15 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       }
 
       // Toggle Document Outline: Alt + A
+      // Toggle Suggestions Sidebar: Alt + W
       // Heading Shortcuts: Alt + 1..5, Alt + Q (Normal)
       // Check !e.ctrlKey to avoid triggering on AltGr on Windows/Danish keyboards
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key.toLowerCase() === 'w' || e.code === 'KeyW') {
+          e.preventDefault();
+          setIsSuggestionsSidebarOpen(prev => !prev);
+          return;
+        }
         if (e.key.toLowerCase() === 'a' || e.code === 'KeyA') {
           e.preventDefault();
           setIsOutlineOpen(prev => !prev);
@@ -2789,19 +2839,23 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
               <EditorContent editor={editor} className={styles.editorContent} spellCheck={false} />
             </div>
 
-            {suggestions.length > 0 && (
-              <SuggestionsMargin
-                suggestions={suggestions}
-                activeSuggestionId={activeSuggestionId}
-                canvasRef={canvasRef}
-                zoomLevel={zoomLevel}
-                onAccept={handleAcceptSuggestion}
-                onReject={handleRejectSuggestion}
-                onSelect={handleSelectSuggestion}
-              />
-            )}
           </div>
         </div>
+
+        {/* Right Suggestions Sidebar (Alt + W) */}
+        {!isFocusMode && (
+          <SuggestionsMargin
+            suggestions={suggestions}
+            activeSuggestionId={activeSuggestionId}
+            isOpen={isSuggestionsSidebarOpen}
+            onToggle={() => setIsSuggestionsSidebarOpen(prev => !prev)}
+            onAccept={handleAcceptSuggestion}
+            onReject={handleRejectSuggestion}
+            onSelect={handleSelectSuggestion}
+            onAcceptAll={handleAcceptAllSuggestions}
+            onRejectAll={handleRejectAllSuggestions}
+          />
+        )}
 
         {/* LanguageTool Right-Click Spell Check Context Menu */}
         {spellCheckMenu && (
@@ -2812,6 +2866,16 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
             onIgnoreAll={handleIgnoreAllSpellCheck}
             onAddToDictionary={handleAddToDictionary}
             onClose={() => setSpellCheckMenu(null)}
+          />
+        )}
+
+        {/* Table Right-Click Context Menu */}
+        {tableContextMenu && (
+          <TableContextMenu
+            x={tableContextMenu.x}
+            y={tableContextMenu.y}
+            editor={editor}
+            onClose={() => setTableContextMenu(null)}
           />
         )}
 

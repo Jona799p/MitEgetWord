@@ -1791,4 +1791,391 @@
   color: #fffbeb;
 }
 
+/* ==========================================================================
+   View Mode Switcher (Grid vs List Layout)
+   ========================================================================== */
+.viewModeToggle {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.viewModeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.viewModeBtn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.viewModeBtnActive {
+  background-color: var(--bg-hover);
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Google Drive Style List View / Elongated Cards
+   ========================================================================== */
+.docsListContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  user-select: none;
+}
+
+.docsListHeader {
+  display: flex;
+  align-items: center;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #8b949e);
+  letter-spacing: 0.02em;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.docsListHeaderName {
+  flex: 1 1 320px;
+  min-width: 180px;
+}
+
+.docsListHeaderDate {
+  flex: 0 0 190px;
+}
+
+.docsListHeaderOwner {
+  flex: 0 0 90px;
+}
+
+.docsListHeaderLocation {
+  flex: 0 0 160px;
+}
+
+.docsListHeaderActions {
+  flex: 0 0 40px;
+  text-align: right;
+}
+
+.docsListRows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Elongated Card / Row */
+.docRow {
+  display: flex;
+  align-items: center;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  gap: 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  min-height: 44px;
+  user-select: none;
+}
+
+.docRow:hover {
+  background-color: var(--bg-card-hover, rgba(255, 255, 255, 0.05));
+  border-color: var(--border-subtle);
+}
+
+.docRowInTrash {
+  opacity: 0.72;
+}
+
+.docRowInTrash:hover {
+  opacity: 1;
+}
+
+.docRowDragging {
+  opacity: 0.35;
+  background-color: var(--bg-hover) !important;
+  border: 1px dashed var(--primary-accent) !important;
+}
+
+/* Name Column */
+.docRowNameCol {
+  flex: 1 1 320px;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.docRowIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.docRowTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.docRowTitleText {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.docRowFavBtn {
+  background: transparent;
+  border: none;
+  padding: 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.2;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.docRow:hover .docRowFavBtn,
+.docRowFavBtn.isFav {
+  opacity: 1;
+}
+
+.docRowFavBtn:hover {
+  transform: scale(1.15);
+}
+
+.docRowTagsWrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.docRowTagPill {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Date / Activity Column */
+.docRowDateCol {
+  flex: 0 0 190px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.docRowDateText {
+  font-size: 12.5px;
+  color: var(--text-secondary, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Owner Column */
+.docRowOwnerCol {
+  flex: 0 0 90px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docRowOwnerName {
+  font-size: 12.5px;
+  color: var(--text-secondary, #94a3b8);
+  white-space: nowrap;
+}
+
+.docRowStorageBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 4px;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.docRowStorageBtn:hover {
+  transform: scale(1.15);
+  background-color: var(--bg-hover);
+}
+
+.docRowStorageBadge {
+  display: flex;
+  align-items: center;
+}
+
+/* Location Column */
+.docRowLocationCol {
+  flex: 0 0 160px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.docRowLocationChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background-color: var(--bg-card, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  max-width: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.docRowLocationChip:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-active);
+}
+
+.docRowLocationText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Actions Column */
+.docRowActionsCol {
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.docRowMoreBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.docRow:hover .docRowMoreBtn {
+  opacity: 1;
+}
+
+.docRowMoreBtn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Create New Document List Row */
+.createListRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-subtle);
+  background-color: var(--bg-card);
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.createListRow:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--primary-accent);
+  color: var(--primary-accent);
+}
+
+.createListRowIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background-color: rgba(74, 144, 226, 0.15);
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.createListRowTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.createListRow:hover .createListRowTitle {
+  color: var(--primary-accent);
+}
+
+/* Responsive adjustments for list view */
+@media (max-width: 950px) {
+  .docsListHeaderOwner,
+  .docRowOwnerCol {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .docsListHeaderLocation,
+  .docRowLocationCol {
+    display: none;
+  }
+}
+
+@media (max-width: 580px) {
+  .docsListHeaderDate,
+  .docRowDateCol {
+    display: none;
+  }
+}
+
+
 
