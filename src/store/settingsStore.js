@@ -295,28 +295,61 @@ export const getSettings = () => {
 export const saveSettings = (newSettings) => {
   const current = getSettings();
   const updated = { ...current, ...newSettings };
-  localStorage.setItem('mitEgetWord_settings', JSON.stringify(updated));
+  
+  // Sikr os at vi ikke gemmer uvedkommende eller enorme felter (for at undgå QuotaExceededError)
+  const allowedKeys = Object.keys(DEFAULT_SETTINGS);
+  const sanitized = {};
+  for (const key of allowedKeys) {
+    if (updated[key] !== undefined) {
+      sanitized[key] = updated[key];
+    }
+  }
+
+  // Tjek for ekstremt store data for at undgå QuotaExceededError
+  for (const key of Object.keys(sanitized)) {
+    if (typeof sanitized[key] === 'string' && sanitized[key].length > 100000) {
+      console.warn(`Indstillingen ${key} var for stor og er blevet nulstillet for at spare plads.`);
+      sanitized[key] = DEFAULT_SETTINGS[key] !== undefined ? DEFAULT_SETTINGS[key] : '';
+    }
+  }
+
+  try {
+    localStorage.setItem('mitEgetWord_settings', JSON.stringify(sanitized));
+  } catch (err) {
+    console.error('Kunne ikke gemme indstillinger:', err);
+    if (err.name === 'QuotaExceededError') {
+      // Hvis det stadig fejler, ryd customDictionary som sidste udvej
+      sanitized.customDictionary = [];
+      try {
+        localStorage.setItem('mitEgetWord_settings', JSON.stringify(sanitized));
+      } catch (e) {
+        console.error('Stadig QuotaExceededError efter rydning af ordbog');
+      }
+    }
+  }
   
   // Opdater også tema med det samme
-  if (newSettings.theme || newSettings.accentColor) {
-    applyTheme(updated.theme, updated.accentColor);
+  if (sanitized.theme || sanitized.accentColor) {
+    applyTheme(sanitized.theme, sanitized.accentColor);
   }
 
   // Synkroniser med ImT specifikke indstillinger
   if (newSettings.imtApiUrl !== undefined || newSettings.imtModel !== undefined || newSettings.imtApiKey !== undefined || newSettings.imtPrompt !== undefined) {
     const imtSettings = {
-      apiUrl: updated.imtApiUrl,
-      model: updated.imtModel,
-      apiKey: updated.imtApiKey,
-      prompt: updated.imtPrompt
+      apiUrl: sanitized.imtApiUrl,
+      model: sanitized.imtModel,
+      apiKey: sanitized.imtApiKey,
+      prompt: sanitized.imtPrompt
     };
-    localStorage.setItem('imt_local_ai_settings', JSON.stringify(imtSettings));
+    try {
+      localStorage.setItem('imt_local_ai_settings', JSON.stringify(imtSettings));
+    } catch(e) {}
     window.dispatchEvent(new CustomEvent('imt:settings-updated', { detail: imtSettings }));
   }
 
   // Udsend event så andre komponenter kan opdatere deres tilstand
-  window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: updated }));
-  return updated;
+  window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: sanitized }));
+  return sanitized;
 };
 
 // Hjælpefunktion til at påføre tema og farver på dokumentet

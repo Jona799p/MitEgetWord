@@ -874,24 +874,19 @@
 }
 
 .editorContent :global(.ProseMirror) table {
-  border-collapse: collapse;
+  border-collapse: collapse !important;
   table-layout: fixed;
   width: 100%;
-  margin: 0;
-  overflow: hidden;
+  margin: 1rem 0;
   background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-}
-
-.lightTheme .editorContent :global(.ProseMirror) table {
-  border-color: rgba(0, 0, 0, 0.18);
+  border: 1.5px solid var(--table-border, #4a5568) !important;
+  box-sizing: border-box;
 }
 
 .editorContent :global(.ProseMirror) table td,
 .editorContent :global(.ProseMirror) table th {
   min-width: 2em;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1.5px solid var(--table-border, #4a5568) !important;
   padding: 8px 12px;
   vertical-align: top;
   box-sizing: border-box;
@@ -900,21 +895,32 @@
   line-height: 1.5;
 }
 
-.lightTheme .editorContent :global(.ProseMirror) table td,
-.lightTheme .editorContent :global(.ProseMirror) table th {
-  border-color: rgba(0, 0, 0, 0.16);
-}
-
 .editorContent :global(.ProseMirror) table th {
-  background-color: rgba(255, 255, 255, 0.07);
+  background-color: var(--table-header-bg, rgba(255, 255, 255, 0.08)) !important;
   font-weight: 600;
   color: var(--canvas-text);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  border-bottom: 2px solid var(--table-border, #4a5568) !important;
 }
 
-.lightTheme .editorContent :global(.ProseMirror) table th {
-  background-color: rgba(0, 0, 0, 0.05);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.25);
+/* Light Theme / Canvas Paper View: crisp contrasting border on pure white paper */
+.lightTheme .editorContent :global(.ProseMirror) table,
+.forceLightCanvas .editorContent :global(.ProseMirror) table {
+  border: 1.5px solid #94a3b8 !important;
+}
+
+.lightTheme .editorContent :global(.ProseMirror) table td,
+.lightTheme .editorContent :global(.ProseMirror) table th,
+.forceLightCanvas .editorContent :global(.ProseMirror) table td,
+.forceLightCanvas .editorContent :global(.ProseMirror) table th {
+  border: 1.5px solid #94a3b8 !important;
+  color: #0f172a;
+}
+
+.lightTheme .editorContent :global(.ProseMirror) table th,
+.forceLightCanvas .editorContent :global(.ProseMirror) table th {
+  background-color: #f1f5f9 !important;
+  border-bottom: 2px solid #64748b !important;
+  color: #0f172a;
 }
 
 /* TipTap Column Resize Handle */
