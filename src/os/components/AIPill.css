@@ -441,191 +441,87 @@
 
 /* Kompakt pillestørrelse når ikke udvidet */
 .ai-pill-container:not(.expanded) .ai-pill {
-  width: 98px;
-  padding: 0 8px;
-  gap: 6px;
+  width: 54px;
+  padding: 0;
+  gap: 0;
 }
 
 /* ==========================================================================
-   Kompakt optagelses-pille med lydvisualisering
+   Kompakt sort optagelses-pille med centrerede grå lydbølger (INGEN GLOW)
    ========================================================================== */
 .ai-pill-container .ai-pill.recording,
 .ai-pill-container.expanded .ai-pill.recording {
-  width: 270px;
+  width: 140px;
   max-width: 90vw;
-  height: 52px;
-  min-height: 52px;
-  padding: 0 14px;
-  border-radius: 9999px;
-  border: 1px solid rgba(239, 68, 68, 0.55);
-  box-shadow: 0 0 24px rgba(239, 68, 68, 0.25), 0 8px 30px rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  background: rgba(20, 16, 20, 0.96);
+  height: 54px;
+  min-height: 54px;
+  padding: 0 16px;
+  border-radius: 27px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(22, 22, 26, 0.94);
   backdrop-filter: blur(24px);
-  animation: aiRecordingPulse 2.5s infinite alternate ease-in-out;
-}
-
-@keyframes aiRecordingPulse {
-  0% {
-    border-color: rgba(239, 68, 68, 0.45);
-    box-shadow: 0 0 18px rgba(239, 68, 68, 0.2), 0 8px 30px rgba(0, 0, 0, 0.6);
-  }
-  100% {
-    border-color: rgba(239, 68, 68, 0.7);
-    box-shadow: 0 0 28px rgba(239, 68, 68, 0.35), 0 8px 30px rgba(0, 0, 0, 0.6);
-  }
-}
-
-.ai-recording-left {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
-.ai-recording-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
-  animation: aiDotBlink 1s infinite alternate;
+.ai-pill-container .ai-pill.recording:hover {
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
-@keyframes aiDotBlink {
-  0% { opacity: 0.35; transform: scale(0.85); }
-  100% { opacity: 1; transform: scale(1.15); }
-}
-
-.ai-recording-timer {
-  font-size: 12px;
-  font-weight: 600;
-  color: #fecaca;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.4px;
-}
-
-/* Lydbølger: streger på række der reagerer på stemmen */
+/* Lydbølger: centrerede grå streger på række */
 .ai-voice-visualizer {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   height: 32px;
-  flex: 1;
-  padding: 0 6px;
+  width: 100%;
 }
 
 .ai-voice-bar {
   width: 3.5px;
   height: 6px;
   min-height: 4px;
+  max-height: 28px;
   border-radius: 3px;
-  background: linear-gradient(180deg, #38bdf8 0%, #818cf8 55%, #f43f5e 100%);
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.35);
-  transition: height 0.07s ease-out;
+  background: #a1a1aa;
+  box-shadow: none;
+  transition: height 0.06s ease-out;
   flex-shrink: 0;
 }
 
-/* Fallback animation for lydbølger hvis AudioContext er dvalet */
+/* Fallback animation for symmetriske grå lydbølger */
 .ai-voice-visualizer.fallback .ai-voice-bar {
   animation: aiVoiceBarBounce 0.85s ease-in-out infinite alternate;
 }
-.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(1) { animation-delay: 0.15s; height: 8px; }
-.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(2) { animation-delay: 0.35s; height: 16px; }
-.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(3) { animation-delay: 0.05s; height: 22px; }
-.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(4) { animation-delay: 0.25s; height: 26px; }
-.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(5) { animation-delay: 0.1s; height: 20px; }
-.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(6) { animation-delay: 0.4s; height: 14px; }
-.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(7) { animation-delay: 0.2s; height: 7px; }
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(1),
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(7) {
+  animation-delay: 0.3s;
+  height: 6px;
+}
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(2),
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(6) {
+  animation-delay: 0.15s;
+  height: 12px;
+}
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(3),
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(5) {
+  animation-delay: 0.05s;
+  height: 18px;
+}
+.ai-voice-visualizer.fallback .ai-voice-bar:nth-child(4) {
+  animation-delay: 0.2s;
+  height: 24px;
+}
 
 @keyframes aiVoiceBarBounce {
   0% { transform: scaleY(0.4); opacity: 0.6; }
   100% { transform: scaleY(1.15); opacity: 1; }
-}
-
-.ai-recording-actions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.ai-record-stop-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #ef4444;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.45);
-  padding: 0;
-  outline: none;
-}
-
-.ai-record-stop-btn:hover {
-  background: #dc2626;
-  transform: scale(1.08);
-  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.6);
-}
-
-.ai-record-cancel-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: transparent;
-  border: none;
-  color: #a1a1aa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  padding: 0;
-}
-
-.ai-record-cancel-btn:hover {
-  color: #f87171;
-  background: rgba(239, 68, 68, 0.15);
-}
-
-/* ==========================================================================
-   Kompakt transskriberings-pille
-   ========================================================================== */
-.ai-pill-container .ai-pill.transcribing,
-.ai-pill-container.expanded .ai-pill.transcribing {
-  width: 210px;
-  max-width: 90vw;
-  height: 52px;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: 9999px;
-  border: 1px solid rgba(167, 139, 250, 0.45);
-  box-shadow: 0 0 22px rgba(167, 139, 250, 0.25), 0 8px 30px rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: rgba(20, 18, 28, 0.96);
-  backdrop-filter: blur(24px);
-}
-
-.ai-transcribing-content {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: #ddd6fe;
-  font-size: 13px;
-  font-weight: 500;
-  user-select: none;
 }
 
 /* Model engine tag - Centered in Y axis, modern pill look */

@@ -87,22 +87,33 @@ const VoiceVisualizer = ({ isRecording }) => {
     }
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    // 7 frekvensbånd tilpasset menneskelig tale
-    const binIndices = [1, 2, 4, 6, 8, 11, 14];
 
     const renderBars = () => {
       if (!analyser || !barsRef.current) return;
       analyser.getByteFrequencyData(dataArray);
 
+      // Beregn lydniveau på vokal-frekvenser (100Hz - 2500Hz)
+      const v0 = (dataArray[2] || 0) / 255;
+      const v1 = (dataArray[4] || 0) / 255;
+      const v2 = (dataArray[6] || 0) / 255;
+      const v3 = (dataArray[8] || 0) / 255;
+
+      const voiceLevel = Math.max(v0, v1, v2, v3);
+      const isAudible = voiceLevel > 0.04;
+
+      // 7 symmetriske søjler: bar 3 er centrum (højest), bar 0 og 6 er yderst (lavest)
+      const centerH = isAudible ? Math.round(8 + voiceLevel * 18) : 6;
+      const innerH = isAudible ? Math.round(6 + (v1 * 0.5 + voiceLevel * 0.5) * 15) : 5;
+      const midH = isAudible ? Math.round(5 + (v2 * 0.5 + voiceLevel * 0.4) * 11) : 4;
+      const outerH = isAudible ? Math.round(4 + (v0 * 0.4 + voiceLevel * 0.3) * 7) : 4;
+
+      const heights = [outerH, midH, innerH, centerH, innerH, midH, outerH];
+
       const barElements = barsRef.current.children;
-      for (let i = 0; i < binIndices.length; i++) {
+      for (let i = 0; i < heights.length; i++) {
         const bar = barElements[i];
         if (bar) {
-          const val = dataArray[binIndices[i]] || 0;
-          // Normaliser lydstyrke (0-255) til højde mellem 4px og 26px
-          const normalized = Math.min(1, Math.max(0, (val - 12) / 150));
-          const height = Math.round(4 + normalized * 22);
-          bar.style.height = `${height}px`;
+          bar.style.height = `${heights[i]}px`;
         }
       }
 
@@ -1091,47 +1102,20 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
 
       {/* Input Pille / Optagelses-pille */}
       {whisperState.isRecording ? (
-        <div className="ai-pill recording">
-          <div className="ai-recording-left">
-            <span className="ai-recording-dot" />
-            <span className="ai-recording-timer">{formatDuration(whisperState.duration)}</span>
-          </div>
-
+        <div 
+          className="ai-pill recording"
+          onClick={handleMicClick}
+          title="Klik for at afslutte (AltGr)"
+        >
           <VoiceVisualizer isRecording={whisperState.isRecording} />
-
-          <div className="ai-recording-actions">
-            <button 
-              type="button" 
-              className="ai-record-stop-btn"
-              onClick={handleMicClick}
-              title="Stop og overfør tale (AltGr)"
-            >
-              <Square size={12} fill="#ffffff" color="#ffffff" />
-            </button>
-            <button 
-              type="button" 
-              className="ai-record-cancel-btn"
-              onClick={() => whisperService.cancelRecording()}
-              title="Annuller optagelse"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        </div>
-      ) : whisperState.isTranscribing ? (
-        <div className="ai-pill transcribing">
-          <div className="ai-transcribing-content">
-            <Loader2 size={16} className="ai-spin" color="#a78bfa" />
-            <span>Transskriberer...</span>
-          </div>
         </div>
       ) : (
-        <div className={`ai-pill ${isLoading ? 'working' : ''}`}>
-          {isLoading && <div className="ai-working-bar" />}
+        <div className={`ai-pill ${isLoading || whisperState.isTranscribing ? 'working' : ''}`}>
+          {(isLoading || whisperState.isTranscribing) && <div className="ai-working-bar" />}
 
           <button 
             type="button" 
-            className={`ai-icon-btn ${isLoading ? 'working' : ''}`}
+            className={`ai-icon-btn ${isLoading || whisperState.isTranscribing ? 'working' : ''}`}
             title={`Aktiv AI: ${
               currentSettings.aiProvider === 'local' 
                 ? `Lokal AI (${currentSettings.localModelName || 'llama3'})` 
@@ -1139,27 +1123,15 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
             }. Klik for at åbne Indstillinger.`}
             onClick={() => window.dispatchEvent(new CustomEvent('openSettings'))}
           >
-            <Sparkles size={17} className={`ai-icon-svg ${isLoading ? 'working' : ''}`} />
+            <Sparkles size={17} className={`ai-icon-svg ${isLoading || whisperState.isTranscribing ? 'working' : ''}`} />
           </button>
 
-          {!isExpanded && (
-            <button
-              type="button"
-              className="ai-mic-btn"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={handleMicClick}
-              title="Tale til tekst (AltGr)"
-            >
-              <Mic size={16} />
-            </button>
-          )}
-          
           {isExpanded && (
             <>
               <textarea 
                 ref={inputRef}
                 className="ai-input" 
-                placeholder={isLoading ? 'Arbejder på dokumentet...' : `Spørg ${
+                placeholder={isLoading || whisperState.isTranscribing ? 'Arbejder på dokumentet...' : `Spørg ${
                   currentSettings.aiProvider === 'local' 
                     ? `Lokal AI (${currentSettings.localModelName || 'qwen3.5:9b'})` 
                     : (currentSettings.aiProvider === 'gemini' 
@@ -1176,7 +1148,7 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
                 onChange={handleInput}
                 onFocus={handleFocus}
                 onKeyDown={handleKeyDown}
-                disabled={isLoading}
+                disabled={isLoading || whisperState.isTranscribing}
                 rows="1"
               />
 
@@ -1224,12 +1196,12 @@ Overfør, tilføj eller indsæt teksten i dokumentet ved hjælp af værktøjet '
 
               <button 
                 type="button"
-                className={`ai-send-btn ${input.trim() ? 'active' : ''} ${isLoading ? 'loading' : ''}`} 
+                className={`ai-send-btn ${input.trim() ? 'active' : ''} ${isLoading || whisperState.isTranscribing ? 'loading' : ''}`} 
                 onClick={handleSend} 
-                disabled={!input.trim() || isLoading}
-                title={isLoading ? 'Arbejder...' : 'Send'}
+                disabled={!input.trim() || isLoading || whisperState.isTranscribing}
+                title={isLoading || whisperState.isTranscribing ? 'Arbejder...' : 'Send'}
               >
-                {isLoading ? (
+                {isLoading || whisperState.isTranscribing ? (
                   <Loader2 size={16} className="ai-spin" />
                 ) : (
                   <ArrowUp size={16} strokeWidth={2.4} />
