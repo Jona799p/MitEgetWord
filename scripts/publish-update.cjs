@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const distDir = path.resolve(__dirname, '..', 'dist-electron');
+const distDir = 'C:/Users/jonas/MitEgetWord-Builds';
 const updatesDir = path.resolve(__dirname, '..', 'server', 'updates');
 const pkgPath = path.resolve(__dirname, '..', 'package.json');
 
