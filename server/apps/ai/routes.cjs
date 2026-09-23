@@ -292,7 +292,7 @@ router.get('/config', (req, res) => {
 router.post('/config', (req, res) => {
   try {
     const current = loadConfig();
-    const { activeProvider, providers, languagetool } = req.body;
+    const { activeProvider, providers, languagetool, whisper } = req.body;
 
     if (activeProvider && current.providers[activeProvider]) {
       current.activeProvider = activeProvider;

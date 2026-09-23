@@ -231,14 +231,6 @@ export const syncServerAIConfig = async () => {
           }
         }
 
-        // Hvis serveren angiver en aktiv provider, afspejl den
-        if (srvConfig.activeProvider) {
-          const mapped = srvConfig.activeProvider === 'ollama' ? 'local' : srvConfig.activeProvider;
-          if (current.aiProvider !== mapped) {
-            current.aiProvider = mapped;
-            changed = true;
-          }
-        }
 
         if (changed) {
           localStorage.setItem('mitEgetWord_settings', JSON.stringify(current));

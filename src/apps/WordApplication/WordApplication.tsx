@@ -1387,35 +1387,8 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
     };
 
     // Lyt efter tale-til-tekst indsættelse ved cursor
-    const handleInsertSpeechText = (e: any) => {
-      if (e.detail?.source === 'pill') return;
-      let text = e.detail?.text;
-      if (!text || typeof text !== 'string') return;
-      text = text.trim();
-      if (!text) return;
-
-      try {
-        const { state } = editor;
-        const { from, empty } = state.selection;
-        
-        let textToInsert = text;
-        if (empty && from > 1) {
-          const prevChar = state.doc.textBetween(Math.max(1, from - 1), from);
-          if (prevChar && !/\s/.test(prevChar) && !/^[,\.\?!:;\)]/.test(textToInsert)) {
-            textToInsert = ' ' + textToInsert;
-          }
-        }
-
-        editor.chain().focus().insertContent(textToInsert).run();
-      } catch (err) {
-        console.error('Fejl ved indsættelse af tale-til-tekst:', err);
-        editor.commands.insertContent(text);
-      }
-    };
-
     window.addEventListener('executeEditorTool', handleExecuteTool);
     window.addEventListener('executeEditorReplace', handleExecuteReplace);
-    window.addEventListener('speech:transcription-complete', handleInsertSpeechText);
 
     return () => {
       if ((window as any).__activeWordEditor === editor) {
@@ -1425,7 +1398,6 @@ export const WordApplication: React.FC<WordApplicationProps> = ({
       }
       window.removeEventListener('executeEditorTool', handleExecuteTool);
       window.removeEventListener('executeEditorReplace', handleExecuteReplace);
-      window.removeEventListener('speech:transcription-complete', handleInsertSpeechText);
     };
   }, [editor]);
 

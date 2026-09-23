@@ -164,6 +164,7 @@ const AIPill = ({ isDashboard }) => {
   const [whisperState, setWhisperState] = useState(() => whisperService.getState());
   const inputRef = useRef(null);
   const pillRef = useRef(null);
+  const handleSendRef = useRef(null);
 
   useEffect(() => {
     const unsubWhisper = whisperService.subscribe((st) => {
@@ -189,8 +190,25 @@ const AIPill = ({ isDashboard }) => {
             }
           }, 60);
         } else {
-          setActionFeedback('Tale indsat i dokument');
-          setTimeout(() => setActionFeedback(null), 3500);
+          setActionFeedback('Analyserer tale...');
+          const dictationPrompt = `[DIKTERING]
+Jeg har netop indtalt følgende via tale-til-tekst:
+"""
+${text}
+"""
+
+Opgave:
+Vurder om jeg taler *til* dig (f.eks. for at give en kommando, stille et spørgsmål, bede om at slette/omskrive noget, "skriv et afsnit om...", "slet dette" osv.) ELLER om jeg bare dikterer en almindelig tekst, der skal skrives ind i dokumentet.
+
+Regler for dit svar:
+1. Hvis det er en almindelig diktering til dokumentet:
+Returner et JSON-kald til værktøjet 'insert_text' hvor teksten er KORREKTUR-LÆST for stave- og grammatikfejl, men ellers holdt HELT original. Ingen ændringer af meningen, ingen tilføjelse af fyldord, ingen konversation.
+
+2. Hvis det er en besked/kommando til dig:
+Udfør opgaven og brug det relevante værktøj ('replace_entire_document', 'replace_text', 'reply_to_user' osv.), præcis som du normalt ville, hvis jeg havde skrevet det i chatten.`;
+          if (handleSendRef.current) {
+            handleSendRef.current(dictationPrompt);
+          }
         }
       }
     };
@@ -363,6 +381,10 @@ const AIPill = ({ isDashboard }) => {
     
     handleSend(promptText);
   };
+
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  });
 
   const handleSend = async (overridePrompt) => {
     const rawMessage = typeof overridePrompt === 'string' ? overridePrompt : input;
